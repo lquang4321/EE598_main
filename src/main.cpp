@@ -11,7 +11,7 @@ Adafruit_AS7341 as7341;
 /*--------COLOR SENSOR---------*/
 
 /*--------ENCODER---------*/
- int counter = 0; 
+ int counter = 0;
 /*--------ENCODER---------*/
 
 
@@ -21,24 +21,24 @@ U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
 
 /*--------THERMISTOR---------*/
 // which analog pin to connect
-#define THERMISTORPIN A1         
+#define THERMISTORPIN A1
 // resistance at 25 degrees C
-#define THERMISTORNOMINAL 10000      
+#define THERMISTORNOMINAL 10000
 // temp. for nominal resistance (almost always 25 C)
-#define TEMPERATURENOMINAL 25   
+#define TEMPERATURENOMINAL 25
 // how many samples to take and average, more takes longer
 // but is more 'smooth'
 #define NUMSAMPLES 8
 // The beta coefficient of the thermistor (usually 3000-4000)
 #define BCOEFFICIENT 3950
 // the value of the 'other' resistor
-#define SERIESRESISTOR 10000    
+#define SERIESRESISTOR 10000
 
 int samples[NUMSAMPLES];
 /*--------THERMISTOR---------*/
 
 /*--------PID---------*/
-// http://brettbeauregard.com/blog/2017/06/introducing-proportional-on-measurement/ 
+// http://brettbeauregard.com/blog/2017/06/introducing-proportional-on-measurement/
 unsigned long lastTime;
 double Input, Output, Setpoint;
 double ITerm, lastInput;
@@ -46,7 +46,7 @@ double kp = 0, ki = 0, kd = 0;
 int SampleTime = 100; //1 sec
 double outMin, outMax;
 bool inAuto = false;
- 
+
 #define MANUAL 0
 #define AUTOMATIC 1
 /*--------PID---------*/
@@ -71,29 +71,29 @@ float getTemp(void){    //This code is from Adafruit website
 
     uint8_t i;
     float average;
-    
+
     // take N samples in a row, with a slight delay
     for (i=0; i< NUMSAMPLES; i++) {
     samples[i] = analogRead(THERMISTORPIN);
     //delayMicroseconds(1000);
     }
-    
+
     // average all the samples out
     average = 0;
     for (i=0; i< NUMSAMPLES; i++) {
         average += samples[i];
     }
     average /= NUMSAMPLES;
-    
-    //Serial.print("Average analog reading "); 
+
+    //Serial.print("Average analog reading ");
     //Serial.println(average);
-    
+
     // convert the value to resistance
     average = 1023 / average - 1;
     average = SERIESRESISTOR / average;
-    //Serial.print("Thermistor resistance "); 
+    //Serial.print("Thermistor resistance ");
     //Serial.println(average);
-    
+
     float steinhart;
     steinhart = average / THERMISTORNOMINAL;     // (R/Ro)
     steinhart = log(steinhart);                  // ln(R/Ro)
@@ -118,19 +118,19 @@ void Compute()
       if(ITerm> outMax) ITerm= outMax;
       else if(ITerm< outMin) ITerm= outMin;
       double dInput = (Input - lastInput);
- 
+
       /*Compute PID Output*/
       Output = kp * error + ITerm- kd * dInput;
       if(Output> outMax) Output = outMax;
       else if(Output < outMin) Output = outMin;
- 
+
       /*Remember some variables for next time*/
       lastInput = Input;
       lastTime = now;
    }
 }
- 
-  
+
+
 void SetTunings(double Kp, double Ki, double Kd)
 {
   double SampleTimeInSec = ((double)SampleTime)/1000;
@@ -150,16 +150,16 @@ void SetSampleTime(int NewSampleTime)
       SampleTime = (unsigned long)NewSampleTime;
    }
 }
- 
+
 void SetOutputLimits(double Min, double Max)
 {
    if(Min > Max) return;
    outMin = Min;
    outMax = Max;
-    
+
    if(Output > outMax) Output = outMax;
    else if(Output < outMin) Output = outMin;
- 
+
    if(ITerm> outMax) ITerm= outMax;
    else if(ITerm< outMin) ITerm= outMin;
 }
@@ -181,7 +181,7 @@ void SetMode(int Mode)
     }
     inAuto = newAuto;
 }
- 
+
 
 
 void setup(void) {
@@ -189,7 +189,7 @@ void setup(void) {
     Wire.begin();
     //analogReference(3.43);
     SetOutputLimits(0, 255);
-    
+
     SetTunings(9, 0.8, 6);
     SetMode(AUTOMATIC);
 
@@ -202,13 +202,13 @@ void setup(void) {
     as7341.startReading();
 
     u8x8.begin();
-    u8x8.setFont(u8x8_font_5x7_f);   
+    u8x8.setFont(u8x8_font_5x7_f);
 
     // Start plotter
     p.Begin();
-  
+
     // Add 5 variable time graph
-    p.AddTimeGraph( "PID", 800, "PID Output %", w, "Setpoint", x, "Temp", y, "Error", z, "F8_680 RED", F8_680 ); 
+    p.AddTimeGraph( "PID", 800, "PID Output %", w, "Setpoint", x, "Temp", y, "Error", z, "F8_680 RED", F8_680 );
 }
 
 
@@ -261,5 +261,5 @@ void loop(void) {
     p.Plot(); // usually called within loop()
 
     analogWrite(16, Output);
-    
+
 }
