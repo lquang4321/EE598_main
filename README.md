@@ -6,4 +6,4 @@
 # Instruction
 This was written using Visual Studio Code (VSC) and the plugin PlatformIO (PIO) to flash to the microcontroller. Arduino IDE can be used, just make sure the libraries match.
 ### Library Dependencies
-The list is in here [Contribution guidelines for this project](.pio)
+The list is in this folder [here](.pio/libdeps)
