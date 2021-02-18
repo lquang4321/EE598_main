@@ -1,3 +1,4 @@
 # EE598_main (Compact) PCR
-## Instructor: Prof. Seo
-## Member: Quang Truong, Yossel Newman, Yousra Tabrani, Gnimdou Tchalim
+## Spring 2021, Senior Design II @ CCNY
+### Instructor: Prof. Seo
+### Member: Quang Truong, Yossel Newman, Yousra Tabrani, Gnimdou Tchalim
