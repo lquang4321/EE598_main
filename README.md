@@ -11,4 +11,6 @@ This was written using Visual Studio Code (VSC) and the plugin PlatformIO (PIO) 
 ***"Plotter"*** is not required for the functionality, it's meant to display serial data on Processing. If you wish to install, the instructions are [here](https://github.com/devinaconley/arduino-plotter).
 
 
-### CAUTION!
+### !!!CAUTION!!!!
+**This** project requires some knowledge in electronics. **DO NOT** attach the heating element directly to a pin. Please use a MOSFET to PWM high power component.
+
