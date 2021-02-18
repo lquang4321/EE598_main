@@ -1,10 +1,10 @@
 /*-----02/17/2021----*/
 /*-----CompactPCR----*/
-#include <Arduino.h>
-#include <Adafruit_AS7341.h>
-#include <Plotter.h> //Displays 2D Graph of X vs Y
-#include <Wire.h>
-#include <U8x8lib.h>
+#include <Arduino.h>            // If you are using Arduino IDE, you can remove or ignore this line.
+#include <Adafruit_AS7341.h>    // Color sensor library
+#include <Plotter.h>            // Displays 2D Graph of X vs Y
+#include <Wire.h>               // I2C library
+#include <U8x8lib.h>            // Display Library (Text only)
 
 /*--------COLOR SENSOR---------*/
 Adafruit_AS7341 as7341;
@@ -20,6 +20,8 @@ U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
 /*--------OLED STUFF---------*/
 
 /*--------THERMISTOR---------*/
+//https://learn.adafruit.com/thermistor/using-a-thermistor
+
 // which analog pin to connect
 #define THERMISTORPIN A1
 // resistance at 25 degrees C
@@ -39,6 +41,9 @@ int samples[NUMSAMPLES];
 
 /*--------PID---------*/
 // http://brettbeauregard.com/blog/2017/06/introducing-proportional-on-measurement/
+
+#define HeaterPIN 16
+
 unsigned long lastTime;
 double Input, Output, Setpoint;
 double ITerm, lastInput;
@@ -260,6 +265,6 @@ void loop(void) {
 
     p.Plot(); // usually called within loop()
 
-    analogWrite(16, Output);
+    analogWrite(HeaterPIN, Output);
 
 }
