@@ -2,5 +2,5 @@
 /include
 /test
 /lib
-.pio/libdeps/Adafruit%20Feather%20bluefruit%20LE/Plotter
-.pio/libdeps/nanoatmega328/Plotter
+.pio/libdeps/Adafruit%20Feather%20bluefruit%20LE
+.pio/libdeps/nanoatmega328
