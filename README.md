@@ -15,5 +15,5 @@ This was written using Visual Studio Code (VSC) and the plugin PlatformIO (PIO) 
 1) **This** project requires some knowledge in electronics. **DO NOT** attach the heating element directly to a pin. Please use a MOSFET to PWM high power component.
 2) Make sure you have at least 5V 2A power supply as the heating element easily spike up to 0.5A.
 3) **DO NOT** attach heating element before making sure temperature sensor work, otherwise there is a risk of **uncontrollable** heating.
-4) Make sure all ratings **DO NOT** exceed any limits per image below:
+4) Make sure all operation **DO NOT** exceed any limits per image below:
     ![Feather nRF52 Pinout v1.2](https://cdn-learn.adafruit.com/assets/assets/000/046/248/original/microcontrollers_Feather_NRF52_Pinout_v1.2-1.png?1504885794)
