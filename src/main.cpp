@@ -5,13 +5,16 @@
 #include <Plotter.h>            // Displays 2D Graph of X vs Y
 #include <Wire.h>               // I2C library
 #include <U8x8lib.h>            // Display Library (Text only)
+#include <RotaryEncoder.h>      // Encoder Library
 
 /*--------COLOR SENSOR---------*/
 Adafruit_AS7341 as7341;
 /*--------COLOR SENSOR---------*/
 
 /*--------ENCODER---------*/
- int counter = 0;
+#define ENC_A     15
+#define ENC_B     11
+int counter = 0;
 /*--------ENCODER---------*/
 
 
@@ -64,7 +67,7 @@ Plotter p;
 
 /*--------Millis Delay------*/
 const long eventTime_1 = 1; //in ms
-const long eventTime_2 = 100; //in ms
+const long eventTime_2 = 50; //in ms
 
 unsigned long previousTime_1 = 0;
 unsigned long previousTime_2 = 0;
@@ -214,12 +217,27 @@ void setup(void) {
 
     // Add 5 variable time graph
     p.AddTimeGraph( "PID", 800, "PID Output %", w, "Setpoint", x, "Temp", y, "Error", z, "F8_680 RED", F8_680 );
+
+    RotaryEncoder.begin(ENC_A, ENC_B);  // Initialize Encoder
+    RotaryEncoder.start();              // Start encoder
 }
 
 
 void loop(void) {
     unsigned long currentTime = millis();
-    u8x8.setCursor(0,0);
+
+    int value = RotaryEncoder.read();
+
+    if (value)
+    {
+        if ( value > 0 )
+        {
+            counter++;
+        }else
+        {
+            counter--;
+        }
+    }    
 
     if ( currentTime - previousTime_1 >= eventTime_1) {
         as7341.readAllChannels( );
@@ -247,18 +265,23 @@ void loop(void) {
 
 
     if ( currentTime - previousTime_2 >= eventTime_2) {
-        u8x8.print("SetTemp: ");
+        u8x8.setCursor(0,0);
+        u8x8.print("SetTmp: ");
         u8x8.print(x);
-        u8x8.print("*C");
+        u8x8.print("C");
 
-        u8x8.setCursor(0,10);
-        u8x8.print("CurTemp: ");
+        u8x8.setCursor(0,17);
+        u8x8.print("CurTmp: ");
         u8x8.print(y);
-        u8x8.print("*C");
+        u8x8.print("C");
 
-        u8x8.setCursor(0,20);
+        u8x8.setCursor(0,34);
         u8x8.print("680nm: ");
         u8x8.print(F8_680);
+        
+        u8x8.setCursor(0,51);
+        u8x8.print("Encoder: ");
+        u8x8.print(counter);
 
         previousTime_2 = currentTime;
     }
