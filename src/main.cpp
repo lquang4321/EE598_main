@@ -68,11 +68,13 @@ Plotter p;
 /*--------Plotter---------*/
 
 /*--------Millis Delay------*/
-const long eventTime_1 = 1; //in ms
+const long eventTime_1 = 1;  //in ms
 const long eventTime_2 = 50; //in ms
+const long eventTime_3 = 500; //in ms
 
 unsigned long previousTime_1 = 0;
 unsigned long previousTime_2 = 0;
+unsigned long previousTime_3 = 0;
 /*--------Millis Delay------*/
 
 void Compute()
@@ -228,7 +230,6 @@ void loop(void) {
 
 
     if ( currentTime - previousTime_2 >= eventTime_2) {
-        u8x8.clearDisplay();
         u8x8.setCursor(0,0);
         u8x8.print("SetTmp: ");
         u8x8.print(x);
@@ -248,6 +249,10 @@ void loop(void) {
         u8x8.print(counter);
 
         previousTime_2 = currentTime;
+    }
+    if ( currentTime - previousTime_3 >= eventTime_3) {
+        u8x8.clearDisplay();
+        previousTime_3 = currentTime;
     }
 
     p.Plot(); // usually called within loop()
