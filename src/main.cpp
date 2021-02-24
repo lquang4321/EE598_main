@@ -6,8 +6,6 @@
 #include <Wire.h>               // I2C library
 #include <U8x8lib.h>            // Display Library (Text only)
 #include <RotaryEncoder.h>      // Encoder Library
-#include <nrf_qdec.h>
-#include <Thermistor.h>
 
 /*--------COLOR SENSOR---------*/
 Adafruit_AS7341 as7341;
@@ -28,7 +26,7 @@ U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
 //https://learn.adafruit.com/thermistor/using-a-thermistor
 
 // which analog pin to connect
-#define THERMISTORPIN A1
+#define THERMISTORPIN A2
 // resistance at 25 degrees C
 #define THERMISTORNOMINAL 10000
 // temp. for nominal resistance (almost always 25 C)
@@ -41,7 +39,7 @@ U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
 // the value of the 'other' resistor
 #define SERIESRESISTOR 10000
 
-Thermistor tempSensor(THERMISTORPIN, THERMISTORNOMINAL,TEMPERATURENOMINAL,NUMSAMPLES,BCOEFFICIENT,SERIESRESISTOR );
+int samples[NUMSAMPLES];
 /*--------THERMISTOR---------*/
 
 /*--------PID---------*/
@@ -70,11 +68,9 @@ Plotter p;
 /*--------Millis Delay------*/
 const long eventTime_1 = 1;  //in ms
 const long eventTime_2 = 50; //in ms
-const long eventTime_3 = 500; //in ms
 
 unsigned long previousTime_1 = 0;
 unsigned long previousTime_2 = 0;
-unsigned long previousTime_3 = 0;
 /*--------Millis Delay------*/
 
 void Compute()
@@ -154,7 +150,36 @@ void SetMode(int Mode)
     inAuto = newAuto;
 }
 
+float getTemp(){
+    uint8_t i;
+    float average;
+    
+    // take N samples in a row, with a slight delay
+    for (i=0; i< NUMSAMPLES; i++) {
+        samples[i] = analogRead(THERMISTORPIN);
+    }
+    
+    // average all the samples out
+    average = 0;
+    for (i=0; i< NUMSAMPLES; i++) {
+        average += samples[i];
+    }
+    average /= NUMSAMPLES;
+    
+    // convert the value to resistance
+    average = 1023 / average - 1;
+    average = SERIESRESISTOR / average;
+    
+    float steinhart;
+    steinhart = average / THERMISTORNOMINAL;     // (R/Ro)
+    steinhart = log(steinhart);                  // ln(R/Ro)
+    steinhart /= BCOEFFICIENT;                   // 1/B * ln(R/Ro)
+    steinhart += 1.0 / (TEMPERATURENOMINAL + 273.15); // + (1/To)
+    steinhart = 1.0 / steinhart;                 // Invert
+    steinhart -= 273.15;                         // convert absolute temp to C
 
+    return steinhart;
+}
 
 void setup(void) {
     Serial.begin(115200);
@@ -216,7 +241,7 @@ void loop(void) {
     //Serial.print(" Temp:");
     //Serial.print(getTemp());
     Setpoint = map(analogRead(A4), 0, 1023, 25, 80);
-    Input = tempSensor.temperature;
+    Input = getTemp();
     //Serial.print(" Error:");
     //Serial.print(Setpoint - Input);
     Compute();
@@ -225,7 +250,7 @@ void loop(void) {
     //Serial.println(Output);
     w = map(Output, 0, 255, 0, 100);
     x = Setpoint;
-    y = tempSensor.temperature;
+    y = getTemp();
     z = Setpoint - Input;
 
 
@@ -239,20 +264,19 @@ void loop(void) {
         u8x8.print("CurTmp: ");
         u8x8.print(y);
         u8x8.print("C");
-
+        
         u8x8.setCursor(0,34);
+        u8x8.printf("Encoder: %02d", counter);
+
+        u8x8.setCursor(0,51);
+        u8x8.print("PIDout: ");
+        u8x8.print(w);
+
+        u8x8.setCursor(0,52);
         u8x8.print("680nm: ");
         u8x8.print(F8_680);
-        
-        u8x8.setCursor(0,51);
-        u8x8.print("Encoder: ");
-        u8x8.print(counter);
 
         previousTime_2 = currentTime;
-    }
-    if ( currentTime - previousTime_3 >= eventTime_3) {
-        u8x8.clearDisplay();
-        previousTime_3 = currentTime;
     }
 
     p.Plot(); // usually called within loop()
