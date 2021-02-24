@@ -6,6 +6,8 @@
 #include <Wire.h>               // I2C library
 #include <U8x8lib.h>            // Display Library (Text only)
 #include <RotaryEncoder.h>      // Encoder Library
+#include <nrf_qdec.h>
+#include <Thermistor.h>
 
 /*--------COLOR SENSOR---------*/
 Adafruit_AS7341 as7341;
@@ -39,7 +41,7 @@ U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
 // the value of the 'other' resistor
 #define SERIESRESISTOR 10000
 
-int samples[NUMSAMPLES];
+Thermistor tempSensor(THERMISTORPIN, THERMISTORNOMINAL,TEMPERATURENOMINAL,NUMSAMPLES,BCOEFFICIENT,SERIESRESISTOR );
 /*--------THERMISTOR---------*/
 
 /*--------PID---------*/
@@ -72,46 +74,6 @@ const long eventTime_2 = 50; //in ms
 unsigned long previousTime_1 = 0;
 unsigned long previousTime_2 = 0;
 /*--------Millis Delay------*/
-
-
-float getTemp(void){    //This code is from Adafruit website
-
-
-    uint8_t i;
-    float average;
-
-    // take N samples in a row, with a slight delay
-    for (i=0; i< NUMSAMPLES; i++) {
-    samples[i] = analogRead(THERMISTORPIN);
-    //delayMicroseconds(1000);
-    }
-
-    // average all the samples out
-    average = 0;
-    for (i=0; i< NUMSAMPLES; i++) {
-        average += samples[i];
-    }
-    average /= NUMSAMPLES;
-
-    //Serial.print("Average analog reading ");
-    //Serial.println(average);
-
-    // convert the value to resistance
-    average = 1023 / average - 1;
-    average = SERIESRESISTOR / average;
-    //Serial.print("Thermistor resistance ");
-    //Serial.println(average);
-
-    float steinhart;
-    steinhart = average / THERMISTORNOMINAL;     // (R/Ro)
-    steinhart = log(steinhart);                  // ln(R/Ro)
-    steinhart /= BCOEFFICIENT;                   // 1/B * ln(R/Ro)
-    steinhart += 1.0 / (TEMPERATURENOMINAL + 273.15); // + (1/To)
-    steinhart = 1.0 / steinhart;                 // Invert
-    steinhart -= 273.15;                         // convert absolute temp to C
-
-    return steinhart;
-}
 
 void Compute()
 {
@@ -220,6 +182,7 @@ void setup(void) {
 
     RotaryEncoder.begin(ENC_A, ENC_B);  // Initialize Encoder
     RotaryEncoder.start();              // Start encoder
+    RotaryEncoder.setDebounce(true);
 }
 
 
@@ -251,7 +214,7 @@ void loop(void) {
     //Serial.print(" Temp:");
     //Serial.print(getTemp());
     Setpoint = map(analogRead(A4), 0, 1023, 25, 80);
-    Input = getTemp();
+    Input = tempSensor.temperature;
     //Serial.print(" Error:");
     //Serial.print(Setpoint - Input);
     Compute();
@@ -260,11 +223,12 @@ void loop(void) {
     //Serial.println(Output);
     w = map(Output, 0, 255, 0, 100);
     x = Setpoint;
-    y = getTemp();
+    y = tempSensor.temperature;
     z = Setpoint - Input;
 
 
     if ( currentTime - previousTime_2 >= eventTime_2) {
+        u8x8.clearDisplay();
         u8x8.setCursor(0,0);
         u8x8.print("SetTmp: ");
         u8x8.print(x);
