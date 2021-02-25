@@ -7,6 +7,11 @@
 #include <U8x8lib.h>            // Display Library (Text only)
 #include <RotaryEncoder.h>      // Encoder Library
 
+/*--------READ BAT VOLTAGE---------*/
+#define VBATPIN A7
+/*--------READ BAT VOLTAGE---------*/
+
+
 /*--------COLOR SENSOR---------*/
 Adafruit_AS7341 as7341;
 /*--------COLOR SENSOR---------*/
@@ -181,6 +186,14 @@ float getTemp(){
     return steinhart;
 }
 
+float readBAT(int pin){
+    float measuredvbat = analogRead(pin);
+    measuredvbat *= 3.3;  // Multiply by 3.3V, our reference voltage
+    measuredvbat /= 1024; // convert to voltage
+
+    return measuredvbat;
+}
+
 void setup(void) {
     Serial.begin(115200);
     Wire.begin();
@@ -210,6 +223,7 @@ void setup(void) {
     RotaryEncoder.begin(ENC_A, ENC_B);  // Initialize Encoder
     RotaryEncoder.start();              // Start encoder
     RotaryEncoder.setDebounce(true);
+
 }
 
 
@@ -275,6 +289,11 @@ void loop(void) {
         u8x8.setCursor(0,52);
         u8x8.print("680nm: ");
         u8x8.print(F8_680);
+
+        u8x8.setCursor(0,53);
+        u8x8.print("Battery: ");
+        u8x8.print(readBAT(VBATPIN));
+        u8x8.print("V");
 
         previousTime_2 = currentTime;
     }
