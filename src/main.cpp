@@ -9,6 +9,10 @@
 
 /*--------READ BAT VOLTAGE---------*/
 #define VBATPIN A7
+#define VBAT_MV_PER_LSB   (0.73242188F)   // for 12bit
+#define VBAT_DIVIDER      (0.71275837F)   // 2M + 0.806M voltage divider on VBAT = (2M / (0.806M + 2M))
+#define VBAT_DIVIDER_COMP (1.403F)        // Compensation factor for the VBAT divider
+#define REAL_VBAT_MV_PER_LSB (VBAT_DIVIDER_COMP * VBAT_MV_PER_LSB)
 /*--------READ BAT VOLTAGE---------*/
 
 
@@ -38,7 +42,7 @@ U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
 #define TEMPERATURENOMINAL 25
 // how many samples to take and average, more takes longer
 // but is more 'smooth'
-#define NUMSAMPLES 8
+#define NUMSAMPLES 10
 // The beta coefficient of the thermistor (usually 3000-4000)
 #define BCOEFFICIENT 3950
 // the value of the 'other' resistor
@@ -72,7 +76,7 @@ Plotter p;
 
 /*--------Millis Delay------*/
 const long eventTime_1 = 1;  //in ms
-const long eventTime_2 = 50; //in ms
+const long eventTime_2 = 100;  //in ms
 
 unsigned long previousTime_1 = 0;
 unsigned long previousTime_2 = 0;
@@ -187,11 +191,16 @@ float getTemp(){
 }
 
 float readBAT(int pin){
-    float measuredvbat = analogRead(pin);
-    measuredvbat *= 3.3;  // Multiply by 3.3V, our reference voltage
-    measuredvbat /= 1024; // convert to voltage
+    analogReference(AR_INTERNAL_3_0);
+    analogReadResolution(12);
 
-    return measuredvbat;
+    float measuredvbat = analogRead(pin);
+
+
+    analogReference(AR_DEFAULT);
+    analogReadResolution(10);
+
+    return measuredvbat * REAL_VBAT_MV_PER_LSB / 1000;
 }
 
 void setup(void) {
@@ -223,7 +232,6 @@ void setup(void) {
     RotaryEncoder.begin(ENC_A, ENC_B);  // Initialize Encoder
     RotaryEncoder.start();              // Start encoder
     RotaryEncoder.setDebounce(true);
-
 }
 
 
@@ -274,26 +282,22 @@ void loop(void) {
         u8x8.print(x);
         u8x8.print("C");
 
-        u8x8.setCursor(0,17);
+        u8x8.setCursor(0,1);
         u8x8.print("CurTmp: ");
         u8x8.print(y);
         u8x8.print("C");
         
-        u8x8.setCursor(0,34);
+        u8x8.setCursor(0,2);
         u8x8.printf("Encoder: %02d", counter);
 
-        u8x8.setCursor(0,51);
-        u8x8.print("PIDout: ");
-        u8x8.print(w);
+        u8x8.setCursor(0,3);
+        u8x8.printf("PIDout: %.0f%%", w);
 
-        u8x8.setCursor(0,52);
-        u8x8.print("680nm: ");
-        u8x8.print(F8_680);
+        u8x8.setCursor(0,4);
+        u8x8.printf("680nm: %.1f", F8_680);
 
-        u8x8.setCursor(0,53);
-        u8x8.print("Battery: ");
-        u8x8.print(readBAT(VBATPIN));
-        u8x8.print("V");
+        u8x8.setCursor(0,6);
+        u8x8.printf("VBat: %-.2fV", readBAT(VBATPIN));
 
         previousTime_2 = currentTime;
     }
