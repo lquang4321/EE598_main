@@ -4,12 +4,10 @@
 #include <Adafruit_AS7341.h>    // Color sensor library
 #include <Plotter.h>            // Displays 2D Graph of X vs Y
 #include <Wire.h>               // I2C library
-#include <U8x8lib.h>            // Display Library (Text only)
-#include <U8g2lib.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>       // Graphic library
+#include <Adafruit_SSD1306.h>   // OLED Library
 #include <RotaryEncoder.h>      // Encoder 
-#include "GUI.h"
+#include "GUI.h"                // Needs a complete rewrite
 
 /*--------READ BAT VOLTAGE---------*/
 #define VBATPIN A7
@@ -241,9 +239,19 @@ void setup(void) {
 
     display.begin(SSD1306_EXTERNALVCC, 0x3C);
     display.clearDisplay();
-    display.setTextSize(1); /* Select font size of text. Increases with size of argument. */
+    display.setTextSize(2); /* Select font size of text. Increases with size of argument. */
     display.setTextColor(WHITE); /* Color of text*/
+    display.setCursor(0,0);
+    display.print("CompactPCR");
+    display.setTextSize(1);
+    display.setCursor(24,16);
+    display.print("EE598 Spr'21");
+    display.setCursor(0,32);
+    display.setTextSize(1);
+    display.print("By: Quang T,Yossel N,   Yousra T,Gnimdou T");
     display.display();
+    display.setTextSize(1);
+    delay(8000);
 
     //display.begin();
     //display.setFont(u8x8_font_5x7_f);
