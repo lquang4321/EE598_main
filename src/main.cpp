@@ -1,11 +1,15 @@
-/*-----02/24/2021----*/
+/*-----03/01/2021----*/
 /*-----CompactPCR----*/
 #include <Arduino.h>            // If you are using Arduino IDE, you can remove or ignore this line.
 #include <Adafruit_AS7341.h>    // Color sensor library
 #include <Plotter.h>            // Displays 2D Graph of X vs Y
 #include <Wire.h>               // I2C library
 #include <U8x8lib.h>            // Display Library (Text only)
-#include <RotaryEncoder.h>      // Encoder Library
+#include <U8g2lib.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <RotaryEncoder.h>      // Encoder 
+#include "GUI.h"
 
 /*--------READ BAT VOLTAGE---------*/
 #define VBATPIN A7
@@ -28,8 +32,13 @@ int counter = 0;
 
 
 /*--------OLED STUFF---------*/
-U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);  
+//U8X8_SSD1306_128X64_VCOMH0_HW_I2C display(/* reset=*/ U8X8_PIN_NONE);  
 /*--------OLED STUFF---------*/
+
+/*--------User Interface---------*/
+int pageNum;
+int cursorPos = 12;
+/*--------User Interface---------*/
 
 /*--------THERMISTOR---------*/
 //https://learn.adafruit.com/thermistor/using-a-thermistor
@@ -76,10 +85,14 @@ Plotter p;
 
 /*--------Millis Delay------*/
 const long eventTime_1 = 1;  //in ms
-const long eventTime_2 = 100;  //in ms
+const long eventTime_2 = 25;  //in ms
+const long eventTime_3 = 25;  //in ms
+const long eventTime_4 = 25;  //in ms
 
 unsigned long previousTime_1 = 0;
 unsigned long previousTime_2 = 0;
+unsigned long previousTime_3 = 0;
+unsigned long previousTime_4 = 0;
 /*--------Millis Delay------*/
 
 void Compute()
@@ -191,17 +204,22 @@ float getTemp(){
 }
 
 float readBAT(int pin){
+    float avg = 0;
     analogReference(AR_INTERNAL_3_0);
     analogReadResolution(12);
 
-    float measuredvbat = analogRead(pin);
-
-
+    for( uint8_t i = 0; i< 20; i++){
+        avg += analogRead(pin);
+    }
     analogReference(AR_DEFAULT);
     analogReadResolution(10);
 
+    float measuredvbat = avg / 20;
+
     return measuredvbat * REAL_VBAT_MV_PER_LSB / 1000;
 }
+
+
 
 void setup(void) {
     Serial.begin(115200);
@@ -219,9 +237,16 @@ void setup(void) {
     as7341.setASTEP(0);
     as7341.setGain(AS7341_GAIN_128X);
     as7341.startReading();
+    as7341.enableLED(false);
 
-    u8x8.begin();
-    u8x8.setFont(u8x8_font_5x7_f);
+    display.begin(SSD1306_EXTERNALVCC, 0x3C);
+    display.clearDisplay();
+    display.setTextSize(1); /* Select font size of text. Increases with size of argument. */
+    display.setTextColor(WHITE); /* Color of text*/
+    display.display();
+
+    //display.begin();
+    //display.setFont(u8x8_font_5x7_f);
 
     // Start plotter
     p.Begin();
@@ -231,7 +256,6 @@ void setup(void) {
 
     RotaryEncoder.begin(ENC_A, ENC_B);  // Initialize Encoder
     RotaryEncoder.start();              // Start encoder
-    RotaryEncoder.setDebounce(true);
 }
 
 
@@ -244,9 +268,15 @@ void loop(void) {
     {
         if ( value > 0 )
         {
+            if( cursorPos < 44){
+                cursorPos += 8;
+            }
             counter++;
         }else
         {
+            if( cursorPos >= 20){
+                cursorPos -= 8;
+            }
             counter--;
         }
     }    
@@ -275,33 +305,38 @@ void loop(void) {
     y = getTemp();
     z = Setpoint - Input;
 
-
     if ( currentTime - previousTime_2 >= eventTime_2) {
-        u8x8.setCursor(0,0);
-        u8x8.print("SetTmp: ");
-        u8x8.print(x);
-        u8x8.print("C");
+        display.clearDisplay();
 
-        u8x8.setCursor(0,1);
-        u8x8.print("CurTmp: ");
-        u8x8.print(y);
-        u8x8.print("C");
+        display.setCursor(0, 0);
+        display.drawLine(0,10,127,10, WHITE);
+        display.fillRect(0, 0, 75, 10, BLACK);
+        display.println(" HOME");
+        display.setCursor(64,0);
+        display.printf("BATT:%-.2fV", readBAT(VBATPIN));
+
+        display.setCursor(0, cursorPos);
+        display.print(">");
+
+        display.setCursor(8,12);
+        display.printf("SetTmp: %-.0f Cel", x);
+
+        display.setCursor(8,20);
+        display.printf("CurTmp: %-02d Cel", y);
         
-        u8x8.setCursor(0,2);
-        u8x8.printf("Encoder: %02d", counter);
+        display.setCursor(8,28);
+        display.printf("Encder: %-02d", counter);
 
-        u8x8.setCursor(0,3);
-        u8x8.printf("PIDout: %.0f%%", w);
+        display.setCursor(8,36);
+        display.printf("PIDout: %-.0f%%", w);
 
-        u8x8.setCursor(0,4);
-        u8x8.printf("680nm: %.1f", F8_680);
+        display.setCursor(8,44);
+        display.printf("680_nM: %-.1f", F8_680);
 
-        u8x8.setCursor(0,6);
-        u8x8.printf("VBat: %-.2fV", readBAT(VBATPIN));
+        display.display();
 
         previousTime_2 = currentTime;
     }
-
     p.Plot(); // usually called within loop()
 
     analogWrite(HeaterPIN, Output);

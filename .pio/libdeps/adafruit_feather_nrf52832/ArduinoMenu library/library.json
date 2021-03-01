@@ -1,0 +1,13 @@
+{
+    "name": "ArduinoMenu library",
+    "keywords": "menu, display, lcd, tft, buttons, encoder, io, control",
+    "description": "AVR generic menu/interactivity system",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/neu-rah/ArduinoMenu",
+        "branch": "master"
+    },
+    "frameworks": "arduino",
+    "platforms": "*",
+    "version": "4.21.3"
+}
