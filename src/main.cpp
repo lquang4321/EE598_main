@@ -244,14 +244,14 @@ void setup(void) {
     display.setCursor(0,0);
     display.print("CompactPCR");
     display.setTextSize(1);
-    display.setCursor(24,16);
+    display.setCursor(24,20);
     display.print("EE598 Spr'21");
     display.setCursor(0,32);
     display.setTextSize(1);
     display.print("By: Quang T,Yossel N,   Yousra T,Gnimdou T");
     display.display();
     display.setTextSize(1);
-    delay(8000);
+    delay(5000);
 
     //display.begin();
     //display.setFont(u8x8_font_5x7_f);
@@ -315,7 +315,7 @@ void loop(void) {
 
     if ( currentTime - previousTime_2 >= eventTime_2) {
         display.clearDisplay();
-
+        display.setTextSize(1);
         display.setCursor(0, 0);
         display.drawLine(0,10,127,10, WHITE);
         display.fillRect(0, 0, 75, 10, BLACK);
