@@ -17,3 +17,6 @@ This was written using *Visual Studio Code (VSC)* and the plugin *PlatformIO (PI
 3) **DO NOT** attach heating element before making sure temperature sensor work, otherwise there is a risk of **uncontrollable** heating. As of now, heating element operates automatically based on temperature sensor. Disconnected temperature sensor will read -273*C.
 4) Make sure all operation **DO NOT** exceed any limits per image below:
     ![Feather nRF52 Pinout v1.2](https://cdn-learn.adafruit.com/assets/assets/000/046/248/original/microcontrollers_Feather_NRF52_Pinout_v1.2-1.png?1504885794)
+
+# Parts List
+***Todo***
