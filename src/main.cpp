@@ -1,24 +1,23 @@
-/*------03/13/2021------*/
+/*------03/15/2021------*/
 #include <Adafruit_I2CDevice.h>
 #include <Arduino.h>
 #include <Wire.h>
 #include <RotaryEncoder.h>
+#include <InternalFileSystem.h>
+
 #include <menu.h>
 #include <menuIO/serialOut.h>
 #include <menuIO/serialIn.h>
 #include <menuIO/chainStream.h>
 #include <menuIO/rotaryEventIn.h>
 #include <menuIO/adafruitGfxOut.h>
+#include <AceButton.h>
+
 #include <Adafruit_SSD1306.h>
 #include <Plotter.h>
 
-#include <AceButton.h> // https://github.com/bxparks/AceButton
-
 using namespace Menu;
 using namespace ::ace_button;
-
-
-
 
 /*--------READ BAT VOLTAGE---------*/
 #define VBATPIN A7
@@ -35,6 +34,7 @@ Adafruit_AS7341 as7341;
 /*--------COLOR SENSOR---------*/
 
 /*--------ENCODER---------*/
+
 #define ROTARY_PIN_BUT 27
 AceButton button(ROTARY_PIN_BUT, /*default is pull-up high*/HIGH);             
 
@@ -44,7 +44,7 @@ RotaryEventIn reIn(
   RotaryEventIn::EventType::BUTTON_LONG_PRESSED | // also back
   RotaryEventIn::EventType::ROTARY_CCW | // up
   RotaryEventIn::EventType::ROTARY_CW // down
-); // register capabilities, see AndroidMenu MenuIO/RotaryEventIn.h file
+);
 
 void encoder( int8_t step)                                                                      //Encoder rotation 
 {
@@ -74,25 +74,17 @@ void handleButtonEvent(AceButton* /* button */, uint8_t eventType, uint8_t butto
       break;
   }
 }
-
 /*--------ENCODER---------*/
 
 /*--------THERMISTOR---------*/
 //https://learn.adafruit.com/thermistor/using-a-thermistor
 
-// which analog pin to connect
-#define THERMISTORPIN A2
-// resistance at 25 degrees C
-#define THERMISTORNOMINAL 10000
-// temp. for nominal resistance (almost always 25 C)
-#define TEMPERATURENOMINAL 25
-// how many samples to take and average, more takes longer
-// but is more 'smooth'
-#define NUMSAMPLES 10
-// The beta coefficient of the thermistor (usually 3000-4000)
-#define BCOEFFICIENT 3950
-// the value of the 'other' resistor
-#define SERIESRESISTOR 10000
+#define THERMISTORPIN A2        // which analog pin to connect
+#define THERMISTORNOMINAL 10000 // resistance at 25 degrees C
+#define TEMPERATURENOMINAL 25   // temp. for nominal resistance (almost always 25 C)
+#define NUMSAMPLES 10           // how many samples to take and average, more takes longer but smoother
+#define BCOEFFICIENT 3950       // The beta coefficient of the thermistor (usually 3000-4000)
+#define SERIESRESISTOR 10000    // the value of the 'other' resistor    
 
 int samples[NUMSAMPLES];
 /*--------THERMISTOR---------*/
@@ -112,36 +104,40 @@ bool inAuto = false;
 
 #define MANUAL 0
 #define AUTOMATIC 1
+
+double setTemp = 25;
 /*--------PID---------*/
 
 /*--------DISPLAY---------*/
-#define fontX 6
+#define fontX 5
 #define fontY 9
 #define WIDTH 128
 #define HEIGHT 64
 
+//U8G2_SSD1306_128X64_ALT0_F_2ND_HW_I2C u8g2(U8G2_R0);
 Adafruit_SSD1306 display(WIDTH,HEIGHT);
 const colorDef<uint16_t> colors[6] MEMMODE={
-  {{BLACK,WHITE},{BLACK,WHITE,WHITE}},//bgColor
-  {{WHITE,BLACK},{WHITE,BLACK,BLACK}},//fgColor
-  {{WHITE,BLACK},{WHITE,BLACK,BLACK}},//valColor
-  {{WHITE,BLACK},{WHITE,BLACK,BLACK}},//unitColor
-  {{WHITE,BLACK},{BLACK,BLACK,BLACK}},//cursorColor
-  {{WHITE,BLACK},{BLACK,WHITE,WHITE}},//titleColor
+    {{BLACK,WHITE},{BLACK,WHITE,WHITE}},//bgColor
+    {{WHITE,BLACK},{WHITE,BLACK,BLACK}},//fgColor
+    {{WHITE,BLACK},{WHITE,BLACK,BLACK}},//valColor
+    {{WHITE,BLACK},{WHITE,BLACK,BLACK}},//unitColor
+    {{WHITE,BLACK},{BLACK,BLACK,BLACK}},//cursorColor
+    {{WHITE,BLACK},{BLACK,WHITE,WHITE}},//titleColor
 };
+
 /*--------DISPLAY---------*/
 
 /*--------Plotter---------*/
-double w, x, z, F8_680;
+double w, x, z, F4_515;
 int y;
 Plotter p;
 /*--------Plotter---------*/
 
 /*--------Millis Delay------*/
-const long eventTime_1 = 200;  //in ms
-const long eventTime_2 = 200;  //in ms
-const long eventTime_3 = 200;  //in ms
-const long eventTime_4 = 200;  //in ms
+const long eventTime_1 = 1000;  //in ms
+const long eventTime_2 = 1000;  //in ms
+const long eventTime_3 = 1000;  //in ms
+const long eventTime_4 = 1000;  //in ms
 
 unsigned long previousTime_1 = 0;
 unsigned long previousTime_2 = 0;
@@ -149,14 +145,14 @@ unsigned long previousTime_3 = 0;
 unsigned long previousTime_4 = 0;
 /*--------Millis Delay------*/
 
-/*--------MISC---------*/
+/*--------PCR LOGIC---------*/
 uint16_t    denatureTemp = 25,
             annealTemp = 25,
             extendTemp = 25;
 
 uint16_t    cycle = 5;
 
-uint16_t    timeOn = 100;
+uint16_t    timeOn = 100;       //LED Blinking to indicate progress
 uint16_t    timeOff = 100;
 
 int ledCtrl=LOW;
@@ -165,6 +161,7 @@ bool blink(int timeOn,int timeOff)
     return millis()%(unsigned long)(timeOn+timeOff)<(unsigned long)timeOn;
 }
 /*--------MISC---------*/
+
 
 void Compute()
 {
@@ -194,43 +191,43 @@ void Compute()
 
 void SetTunings(double Kp, double Ki, double Kd)
 {
-  double SampleTimeInSec = ((double)SampleTime)/1000;
-   kp = Kp;
-   ki = Ki * SampleTimeInSec;
-   kd = Kd / SampleTimeInSec;
+    double SampleTimeInSec = ((double)SampleTime)/1000;
+    kp = Kp;
+    ki = Ki * SampleTimeInSec;
+    kd = Kd / SampleTimeInSec;
 }
 
 void SetSampleTime(int NewSampleTime)
 {
-   if (NewSampleTime > 0)
-   {
-      double ratio  = (double)NewSampleTime
-                      / (double)SampleTime;
-      ki *= ratio;
-      kd /= ratio;
-      SampleTime = (unsigned long)NewSampleTime;
-   }
+    if (NewSampleTime > 0)
+    {
+        double ratio  = (double)NewSampleTime
+                        / (double)SampleTime;
+        ki *= ratio;
+        kd /= ratio;
+        SampleTime = (unsigned long)NewSampleTime;
+    }
 }
 
 void SetOutputLimits(double Min, double Max)
 {
-   if(Min > Max) return;
-   outMin = Min;
-   outMax = Max;
+    if(Min > Max) return;
+    outMin = Min;
+    outMax = Max;
 
-   if(Output > outMax) Output = outMax;
-   else if(Output < outMin) Output = outMin;
+    if(Output > outMax) Output = outMax;
+    else if(Output < outMin) Output = outMin;
 
-   if(ITerm> outMax) ITerm= outMax;
-   else if(ITerm< outMin) ITerm= outMin;
+    if(ITerm> outMax) ITerm= outMax;
+    else if(ITerm< outMin) ITerm= outMin;
 }
 
 void Initialize()
 {
-   lastInput = Input;
-   ITerm = Output;
-   if(ITerm> outMax) ITerm= outMax;
-   else if(ITerm< outMin) ITerm= outMin;
+    lastInput = Input;
+    ITerm = Output;
+    if(ITerm> outMax) ITerm= outMax;
+    else if(ITerm< outMin) ITerm= outMin;
 }
 
 void SetMode(int Mode)
@@ -290,35 +287,21 @@ float readBAT(int pin){
     return measuredvbat * REAL_VBAT_MV_PER_LSB / 1000;
 }
 
-
-
-
 /*--------GUI---------*/
-result myLedOn() {
-    ledCtrl=HIGH;
-    return proceed;
-}
-result myLedOff() {
-    ledCtrl=LOW;
-    return proceed;
-}
-result ledToggle(){
-    ledCtrl = !ledCtrl;
-    return proceed;
-}
-
 MENU(checkSensors, "SENSORS READ",doNothing,noEvent,wrapStyle                  //Working
     ,FIELD(y,"Current Temp: ","C",25,150,0,0,doNothing, noEvent, noStyle) 
     ,FIELD(battVOLT,"Batt Voltage: ","V",2,5,0,0,doNothing, noEvent, noStyle) 
     ,FIELD(w,"PID Output: ","%",0,100,0,0,doNothing, noEvent, noStyle) 
+    ,FIELD(F4_515,"515nm: ","",0,50000,0,0,doNothing, noEvent, noStyle)
     ,EXIT("<Back")
 );
 
 MENU(setConfig, "SETUP",doNothing,noEvent,wrapStyle                  //Working
-    ,FIELD(denatureTemp,"Denature: ","c",25,100,1,0,Menu::doNothing,Menu::noEvent,Menu::noStyle)
-    ,FIELD(annealTemp,"Anneal: ","c",25,100,1,0,Menu::doNothing,Menu::noEvent,Menu::noStyle)
-    ,FIELD(extendTemp,"Extension: ","c",25,100,1,0,Menu::doNothing,Menu::noEvent,Menu::noStyle)
-    ,FIELD(cycle,"Cycle: ","",0,100,1,0,Menu::doNothing,Menu::noEvent,Menu::noStyle)
+    //,FIELD(Setpoint,"Set Temp: ","*C",25,100,1,0, doNothing, noEvent, noStyle)         //Works
+    ,FIELD(denatureTemp,"Denature: ","c",25,100,1,0,doNothing,noEvent,noStyle)
+    ,FIELD(annealTemp,"Anneal: ","c",25,100,1,0,doNothing,noEvent,noStyle)
+    ,FIELD(extendTemp,"Extension: ","c",25,100,1,0,doNothing,noEvent,noStyle)
+    ,FIELD(cycle,"Cycle: ","",0,100,1,0,doNothing,noEvent,noStyle)
     ,EXIT("<Back")
 );
 
@@ -331,22 +314,26 @@ MENU(about, "ABOUT",doNothing,noEvent,wrapStyle                         //Works
     ,OP("Prof. Sang-woo Seo", doNothing, noEvent)                           //Works
     ,EXIT("<Back")
 );
-
+MENU(pcrRun, "RUN",doNothing,noEvent,wrapStyle                         //Works
+    ,OP("PLACE HOLDER", doNothing, noEvent)                             //Works
+    ,EXIT("<Back")
+);
 MENU(mainMenu,"MAIN",doNothing,noEvent,wrapStyle
-    ,OP("Run", ledToggle, enterEvent)                                                //Works
-    ,FIELD(timeOn,"OnTime: ","ms",1,1000,10,1, doNothing, noEvent, noStyle)         //Works
-    ,FIELD(timeOff,"OffTime: ","ms",1,1000,10,1,doNothing, noEvent, noStyle)        //Works
+    //,OP("Run", ledToggle, enterEvent)                                                //Works
+    //,FIELD(timeOff,"OffTime: ","ms",1,1000,10,1,doNothing, noEvent, noStyle)         //Works
+    ,SUBMENU(pcrRun)
     ,SUBMENU(setConfig)
     ,SUBMENU(about)
     ,SUBMENU(checkSensors)
     // ,OP("LED On",myLedOn,enterEvent)
     // ,OP("LED Off",myLedOff,enterEvent)
-    ,EXIT("<Back")
+    //,EXIT("<Back")
 );
 
-#define MAX_DEPTH 2
+#define MAX_DEPTH 3
 
 MENU_OUTPUTS(out,MAX_DEPTH
+    //,U8G2_OUT(u8g2,colors,fontX,fontY,0,0,{0,0,WIDTH/fontX,HEIGHT/fontY})
     ,ADAGFX_OUT(display,colors,fontX,fontY,{0,0,WIDTH/fontX,HEIGHT/fontY})
     ,SERIAL_OUT(Serial)
     ,NONE
@@ -356,16 +343,12 @@ serialIn serial(Serial);        //Serial input
 MENU_INPUTS(in,&reIn);          //Physical input
 
 NAVROOT(nav,mainMenu,MAX_DEPTH,in,out);
-
 /*--------GUI---------*/
-
 
 
 
 void setup(void)
 {
-
-    Wire.begin();
     //analogReference(3.43);
     SetOutputLimits(0, 255);
 
@@ -377,7 +360,7 @@ void setup(void)
     as7341.begin();
     as7341.setATIME(65534);
     as7341.setASTEP(0);
-    as7341.setGain(AS7341_GAIN_128X);
+    as7341.setGain(AS7341_GAIN_256X);
     as7341.startReading();
     as7341.enableLED(false);
     pinMode(LED_BUILTIN, OUTPUT);
@@ -401,17 +384,13 @@ void setup(void)
     display.clearDisplay();
     delay(100);
     display.display();
-    // u8x8.begin();
-    // u8x8.setFont(fontName);
-    // u8x8.drawString(0,0,"Hello");
-    // u8x8.print("Menu 4.x");
 
     //Serial.begin(115200);
     // Start plotter
     p.Begin();
 
     // Add 5 variable time graph
-    p.AddTimeGraph( "PID", 800, "PID Output %", w, "Setpoint", x, "Temp", y, "Error", z, "F8_680 RED", F8_680 );
+    p.AddTimeGraph( "PID", 800, "PID Output %", w, "Setpoint", x, "Temp", y, "Error", z, "F4_515 GREEN", F4_515 );
 }
 
 void loop(void)
@@ -420,11 +399,11 @@ void loop(void)
     battVOLT = readBAT(VBATPIN);
     if ( currentTime - previousTime_1 >= eventTime_1) {
         as7341.readAllChannels( );
-        F8_680 = as7341.getChannel(AS7341_CHANNEL_680nm_F8);
+        F4_515 = as7341.getChannel(AS7341_CHANNEL_515nm_F4);
 
         previousTime_1 = currentTime;
     }
-    Setpoint = map(analogRead(A4), 0, 1023, 25, 80);
+    //Setpoint = map(analogRead(A4), 0, 1023, 25, 80);
     Input = getTemp();
     w = map(Output, 0, 255, 0, 100);
     x = Setpoint;
@@ -438,12 +417,12 @@ void loop(void)
     button.check();
     digitalWrite(LED_BUILTIN, blink(timeOn, timeOff));
 
-    //nav.poll();              //Polling based, laggy inputs but better for time sensitive application
-    //display.display();    
+    nav.poll();              //Polling based, laggy inputs but better for time sensitive application
+    display.display(); 
 
-    nav.doInput();              //Event Based. This display method is more responsive, but lags background process
-    if (nav.changed(0)) {       //only draw if changed
-        nav.doOutput();
-        display.display();
-    }
+    // nav.doInput();              //Event Based. This display method is more responsive, but lags background process
+    // if (nav.changed(0)) {       //only draw if changed
+    //     nav.doOutput();
+    //     display.display();
+    // }
 }
