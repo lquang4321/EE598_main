@@ -233,7 +233,7 @@ void Adafruit_AS7341::delayForData(int waitTime) {
   if (waitTime == 0) // Wait forever
   {
     while (!getIsDataReady()) {
-      delay(1);
+      delayMicroseconds(100);
     }
     return;
   }
@@ -241,7 +241,7 @@ void Adafruit_AS7341::delayForData(int waitTime) {
   {
     uint32_t elapsedMillis = 0;
     while (!getIsDataReady() && elapsedMillis < waitTime) {
-      delay(1);
+      delayMicroseconds(100);
       elapsedMillis++;
     }
     return;

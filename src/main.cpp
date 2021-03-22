@@ -11,6 +11,7 @@
 #include <menuIO/chainStream.h>
 #include <menuIO/rotaryEventIn.h>
 #include <menuIO/adafruitGfxOut.h>
+#include <plugin/barField.h> // numeric field edit with a graph bar
 #include <AceButton.h>
 
 #include <Adafruit_SSD1306.h>
@@ -31,10 +32,12 @@ float battVOLT;
 /*--------COLOR SENSOR---------*/
 #include <Adafruit_AS7341.h>
 Adafruit_AS7341 as7341;
+double F3_480;
 /*--------COLOR SENSOR---------*/
 
 /*--------ENCODER---------*/
-
+#define ENC_A 30
+#define ENC_B 11
 #define ROTARY_PIN_BUT 27
 AceButton button(ROTARY_PIN_BUT, /*default is pull-up high*/HIGH);             
 
@@ -128,16 +131,16 @@ const colorDef<uint16_t> colors[6] MEMMODE={
 /*--------DISPLAY---------*/
 
 /*--------Plotter---------*/
-double w, x, z, F4_515;
+double w, x, z;
 int y;
 Plotter p;
 /*--------Plotter---------*/
 
 /*--------Millis Delay------*/
-const long eventTime_1 = 1000;  //in ms
-const long eventTime_2 = 1000;  //in ms
-const long eventTime_3 = 1000;  //in ms
-const long eventTime_4 = 1000;  //in ms
+const long eventTime_1 = 2000;  //in ms
+const long eventTime_2 = 75;  //in ms
+const long eventTime_3 = 100;  //in ms
+const long eventTime_4 = 100;  //in ms
 
 unsigned long previousTime_1 = 0;
 unsigned long previousTime_2 = 0;
@@ -148,21 +151,23 @@ unsigned long previousTime_4 = 0;
 /*--------PCR LOGIC---------*/
 uint16_t    denatureTemp = 25,
             annealTemp = 25,
-            extendTemp = 25;
+            extendTemp = 25,
+            cycle = 5;
 
-uint16_t    cycle = 5;
+uint16_t    currDenatureTemp = 25,
+            currAnnealTemp = 25,
+            currExtendTemp = 25,
+            currCycle = 0;
 
-uint16_t    timeOn = 100;       //LED Blinking to indicate progress
+uint16_t    timeOn = 100;                                                   //Indicator LED to make sure MCU has no stutter/hiccup
 uint16_t    timeOff = 100;
-
-int ledCtrl=LOW;
+int ledCtrl = LOW;
 bool blink(int timeOn,int timeOff) 
 {
     return millis()%(unsigned long)(timeOn+timeOff)<(unsigned long)timeOn;
 }
-/*--------MISC---------*/
 
-
+/*--------PID---------*/
 void Compute()
 {
    if(!inAuto) return;
@@ -239,8 +244,10 @@ void SetMode(int Mode)
     }
     inAuto = newAuto;
 }
+/*--------PID---------*/
 
-float getTemp(){
+/*--------Temp Reading---------*/
+float getTemp(void){
     uint8_t i;
     float average;
     
@@ -271,6 +278,52 @@ float getTemp(){
     return steinhart;
 }
 
+float smoothedTemp = 0; 
+float tempSmoother = 0.05;
+float tempLog[WIDTH];
+long tempLogInterval = 500;
+long lastTempLog = 0;
+long numTempSamples = 0;
+
+float fmap(float x, float in_min, float in_max, float out_min, float out_max)
+{
+     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+float fmapConstrained(float x, float in_min, float in_max, float out_min, float out_max)
+{
+    float f = fmap( x,  in_min, in_max, out_min, out_max);
+
+    if( f < out_min )
+        f = out_min;
+
+    if( f > out_max )
+        f = out_max;
+
+    return f;
+}
+void setGraphDirty();
+void loopTempRead(void)
+{
+    smoothedTemp = (1.0 - tempSmoother) * smoothedTemp + tempSmoother * Input;
+
+    long now = millis();
+    if( now - lastTempLog  > tempLogInterval)
+    {
+        // shift array down
+        for( int i = 0; i < WIDTH - 1; i ++ )
+            tempLog[i] = tempLog[i+1];
+
+        // add new entry
+        tempLog[WIDTH - 1] = smoothedTemp;  
+        lastTempLog = now;
+        setGraphDirty();
+        numTempSamples++;
+    }
+}
+/*--------Temp Reading---------*/
+
+/*--------Batt Reading---------*/
 float readBAT(int pin){
     float avg = 0;
     analogReference(AR_INTERNAL_3_0);
@@ -286,13 +339,82 @@ float readBAT(int pin){
 
     return measuredvbat * REAL_VBAT_MV_PER_LSB / 1000;
 }
+/*--------Batt Reading---------*/
 
 /*--------GUI---------*/
+class tempTimeline:public prompt {
+    public:
+        unsigned int t=0;
+        unsigned int last=0;
+
+        tempTimeline(constMEM promptShadow& p):prompt(p) {}
+        Used printTo(navRoot &root,bool sel,menuOut& out, idx_t idx,idx_t len,idx_t panelNr) override {
+            last=t;
+            
+            gfxOut*g = (gfxOut*)&out;
+            adaGfxOut*u = (adaGfxOut*)&out;
+
+            display.setTextColor(u->getColor(fgColor,sel,enabledStatus,false));
+            const panel p=out.panels[panelNr];
+
+            int bottom = (p.y+idx+2) * g->resY;             
+            int height = g->resY;
+            int top = bottom-height;
+            
+            if( bottom < 0 || top >  display.width())
+                {
+                    //Serial.println("not drawing");
+                    return 0; // not on screen
+                }
+                //Serial.print(millis()); Serial.println("- drawing");
+                for( int x = p.x; x < display.width();x++)
+                {
+                    int barHeight = 1 + fmap(tempLog[x], 0.0, 250.0, 0.0, (float)g->resY);
+                    if( barHeight < 1 )
+                        barHeight = 1;
+                    
+                    int y = bottom-barHeight; // actually the top of the bar, as y=0 is at the top
+                    int h = barHeight;
+
+                    // make the axis line crawl
+                    if( (numTempSamples+x)%4 != 0)
+                    {
+                        y+=1;
+                        h-=1;
+                    }
+                    
+                    
+                    display.drawFastVLine(x,y,h, SSD1306_WHITE);
+                }
+            //display.drawFastVLine(random(0,127),40,random(0,20), SSD1306_WHITE);
+            
+
+            return 1;
+        }
+
+        // virtual bool changed(const navNode &nav,const menuOut& out,bool sub=true) {
+
+        //     // is never called!
+            
+        //     t = millis()/tempLogInterval;
+        //     if( last!=t )
+        //     {
+        //         Serial.println("changed");
+        //         return true;
+        //     }
+        //     else
+        //     {
+        //         Serial.println("Not changed");
+        //         return false;
+        //     }
+        // }
+};
+
 MENU(checkSensors, "SENSORS READ",doNothing,noEvent,wrapStyle                  //Working
-    ,FIELD(y,"Current Temp: ","C",25,150,0,0,doNothing, noEvent, noStyle) 
+    ,FIELD(y,"Curr Temp: ","C",25,150,0,0,doNothing, noEvent, noStyle) 
     ,FIELD(battVOLT,"Batt Voltage: ","V",2,5,0,0,doNothing, noEvent, noStyle) 
     ,FIELD(w,"PID Output: ","%",0,100,0,0,doNothing, noEvent, noStyle) 
-    ,FIELD(F4_515,"515nm: ","",0,50000,0,0,doNothing, noEvent, noStyle)
+    ,FIELD(F3_480,"480nm: ","",0,100000,0,0,doNothing, noEvent, noStyle)
     ,EXIT("<Back")
 );
 
@@ -305,17 +427,20 @@ MENU(setConfig, "SETUP",doNothing,noEvent,wrapStyle                  //Working
     ,EXIT("<Back")
 );
 
-MENU(about, "ABOUT",doNothing,noEvent,wrapStyle                         //Works
-    ,OP("CCNYSenior II Spr'21", doNothing, noEvent)                             //Works
-    ,OP("      AUTHOR        ", doNothing, noEvent)                                  //Works  
-    ,OP("Quang T, Yossel N,", doNothing, noEvent)                                   //Works
-    ,OP("Gnimdou T, Yousra T", doNothing, noEvent)                                  //Works    
-    ,OP("      MENTOR        ", doNothing, noEvent)                                  //Works 
-    ,OP("Prof. Sang-woo Seo", doNothing, noEvent)                           //Works
+MENU(about, "ABOUT",doNothing,noEvent,wrapStyle                                          //Works
+    ,OP("CCNYSenior II Spr'21", doNothing, noEvent)                                    //Works
+    ,OP("      AUTHOR        ", doNothing, noEvent)                                      //Works  
+    ,OP("Quang T, Yossel N,", doNothing, noEvent)                                       //Works
+    ,OP("Gnimdou T, Yousra T", doNothing, noEvent)                                      //Works    
+    ,OP("      MENTOR        ", doNothing, noEvent)                                     //Works 
+    ,OP("Prof. Sang-woo Seo", doNothing, noEvent)                                        //Works
     ,EXIT("<Back")
 );
-MENU(pcrRun, "RUN",doNothing,noEvent,wrapStyle                         //Works
-    ,OP("PLACE HOLDER", doNothing, noEvent)                             //Works
+int test=0;
+MENU(pcrRun, "RUN",doNothing,noEvent,wrapStyle                                          //Works
+    ,FIELD(Input,"CurrTemp: ","C",25,150,0,0,doNothing, noEvent, noStyle)           //
+    ,FIELD(currCycle,"CurrCycle: ","C",0,100,0,0,doNothing, noEvent, noStyle)
+    ,altOP(tempTimeline,"",doNothing,noEvent)
     ,EXIT("<Back")
 );
 MENU(mainMenu,"MAIN",doNothing,noEvent,wrapStyle
@@ -330,6 +455,10 @@ MENU(mainMenu,"MAIN",doNothing,noEvent,wrapStyle
     //,EXIT("<Back")
 );
 
+void setGraphDirty()
+{
+    pcrRun[1].dirty=true;       //2nd Option within pcrRun menu, auto update/scroll graph
+}
 #define MAX_DEPTH 3
 
 MENU_OUTPUTS(out,MAX_DEPTH
@@ -343,6 +472,17 @@ serialIn serial(Serial);        //Serial input
 MENU_INPUTS(in,&reIn);          //Physical input
 
 NAVROOT(nav,mainMenu,MAX_DEPTH,in,out);
+
+
+result idle(menuOut& o,idleEvent e) {
+    o.clear();
+    switch(e) {
+        case idleStart:o.println("suspending menu!");break;
+        case idling:o.println("suspended...");break;
+        case idleEnd:o.println("resuming menu.");break;
+    }
+    return proceed;
+}
 /*--------GUI---------*/
 
 
@@ -356,13 +496,15 @@ void setup(void)
     SetMode(AUTOMATIC);
 
     Setpoint = 30.0;
+
     Wire.beginTransmission(0x39);
     as7341.begin();
-    as7341.setATIME(65534);
-    as7341.setASTEP(0);
+    as7341.setATIME(100);
+    as7341.setASTEP(999);
     as7341.setGain(AS7341_GAIN_256X);
     as7341.startReading();
     as7341.enableLED(false);
+
     pinMode(LED_BUILTIN, OUTPUT);
 
     pinMode(ROTARY_PIN_BUT, INPUT_PULLUP);
@@ -375,7 +517,7 @@ void setup(void)
     buttonConfig->setFeature(ButtonConfig::kFeatureSuppressAfterClick);
     buttonConfig->setFeature(ButtonConfig::kFeatureSuppressAfterDoubleClick);
     
-    RotaryEncoder.begin(7, 30);
+    RotaryEncoder.begin(ENC_A, ENC_B);
     RotaryEncoder.setDebounce(true);
     //RotaryEncoder.setSampler(5120);
     RotaryEncoder.start();
@@ -385,24 +527,43 @@ void setup(void)
     delay(100);
     display.display();
 
+    for( uint16_t i = 0; i < WIDTH; i++)
+    {
+        tempLog[i] = 100;
+    }
+    about[0].enabled = disabledStatus;
+    about[1].enabled = disabledStatus;
+    about[2].enabled = disabledStatus;
+
+    nav.idleTask=idle;//point a function to be used when menu is suspended
+
     //Serial.begin(115200);
     // Start plotter
     p.Begin();
 
     // Add 5 variable time graph
-    p.AddTimeGraph( "PID", 800, "PID Output %", w, "Setpoint", x, "Temp", y, "Error", z, "F4_515 GREEN", F4_515 );
+    p.AddTimeGraph( "PID", 800, "PID Output %", w, "Setpoint", x, "Temp", y, "Error", z, "F3_480 RED", F3_480 );
+    F3_480 = 0.0;
 }
 
 void loop(void)
 {
+    loopTempRead();
     unsigned long currentTime = millis();
     battVOLT = readBAT(VBATPIN);
-    if ( currentTime - previousTime_1 >= eventTime_1) {
-        as7341.readAllChannels( );
-        F4_515 = as7341.getChannel(AS7341_CHANNEL_515nm_F4);
+    
+    if ( currentTime - previousTime_1 >= eventTime_1 ){
+        // as7341.readAllChannels();
+        // F3_480 = as7341.getChannel(AS7341_CHANNEL_480nm_F3);    
 
         previousTime_1 = currentTime;
     }
+
+    if ( currentTime - previousTime_2 >= eventTime_2) {
+        encoder( RotaryEncoder.read() );
+        previousTime_2 = currentTime;
+    }
+
     //Setpoint = map(analogRead(A4), 0, 1023, 25, 80);
     Input = getTemp();
     w = map(Output, 0, 255, 0, 100);
@@ -410,12 +571,12 @@ void loop(void)
     y = getTemp();
     z = Setpoint - Input;
     Compute();
-    p.Plot(); // usually called within loop()
+    
     analogWrite(HeaterPIN, Output);
 
-    encoder( RotaryEncoder.read() );
     button.check();
     digitalWrite(LED_BUILTIN, blink(timeOn, timeOff));
+    p.Plot(); // usually called within loop()
 
     nav.poll();              //Polling based, laggy inputs but better for time sensitive application
     display.display(); 
