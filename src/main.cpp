@@ -5,20 +5,21 @@
 #include <RotaryEncoder.h>
 #include <InternalFileSystem.h>
 #include <PID_v1.h>
+#include <utility/SoftwareTimer.h>      //For keeping cycle time
 
-#include <menu.h>
+#include <menu.h>                       //GUI related stuff
 #include <menuIO/serialOut.h>
 #include <menuIO/serialIn.h>
 #include <menuIO/chainStream.h>
 #include <menuIO/rotaryEventIn.h>
 #include <menuIO/adafruitGfxOut.h>
-#include <AceButton.h>
+#include <AceButton.h>                  //Push Button features
 
-#include <Adafruit_AS7341.h>
-#include <Adafruit_SSD1306.h>
-#include <Plotter.h>
+#include <Adafruit_AS7341.h>            //Light sensor
+#include <Adafruit_SSD1306.h>           //OLED
+#include <Plotter.h>                    //Serial plotter on PC
 
-#include <config.h>
+#include <config.h>                     //This project settings and functions
 
 using namespace Menu;
 
@@ -44,9 +45,9 @@ void RotaryInit(void)
 }
 
 /*--------GUI---------*/
-class altPrompt:public prompt {
+class Stages:public prompt {
     public:
-        altPrompt(constMEM promptShadow& p):prompt(p) {}
+        Stages(constMEM promptShadow& p):prompt(p) {}
         Used printTo(navRoot &root,bool sel,menuOut& out, idx_t idx,idx_t len,idx_t) override {
 
             //return out.printRaw((constText*)(currStage[0]),len);
@@ -61,34 +62,57 @@ class confirmRun:public menu {
             //isRunning = true;
             return idx<0? 
             menu::printTo(root,sel,out,idx,len,p)://when printing title
-            out.printRaw((constText*)F(">>CANCEL<<"),len);//when printing as regular option
+            out.printRaw(String(runStatus[isRunning]).c_str(),len);//when printing as regular option
         }
 };
 
 result systemExit();
 
-altMENU(confirmRun,startPCR,"Cancel PCR Progress?",doNothing,noEvent,wrapStyle,(Menu::_menuData|Menu::_canNav)
+altMENU(confirmRun,startPCR,"Confirm Action?",doNothing,noEvent,noStyle,(Menu::_menuData|Menu::_canNav)
     ,OP("Yes",systemExit,enterEvent)
     ,EXIT("Cancel")
 );
 
+PADMENU(Temperature,"",doNothing,noEvent,noStyle
+    ,FIELD(currTemp,"Temp:","c/",0,150,0,0,doNothing, noEvent, noStyle)           
+    ,FIELD(setTemp,"","c/",0,150,0,0,doNothing, noEvent, noStyle)
+    ,FIELD(Output_Percent,"","%",0,100,0,0,doNothing, noEvent, noStyle)
+);
+
+PADMENU(Cycle,"",doNothing,noEvent,wrapStyle
+    ,FIELD(currCycle,"Cycle:"," /",0,150,0,0,doNothing, noEvent, noStyle)           
+    ,FIELD(setCycle,"","",0,150,0,0,doNothing, noEvent, noStyle)
+);
+
+PADMENU(Cycle_Time,"",doNothing,noEvent,wrapStyle
+    ,FIELD( currentTime_sec ,"Time:","s /",0,1000,0,0,doNothing, noEvent, noStyle)           
+    ,FIELD(cycleTime,"","s",0,150,0,0,doNothing, noEvent, noStyle)
+);
 
 MENU(checkSensors, "SENSORS READ",doNothing,noEvent,wrapStyle                  //Working
-    ,FIELD(currTemp,"Curr Temp: "," c",0,150,0,0,doNothing, noEvent, noStyle) 
-    ,FIELD(battVOLT,"Batt Voltage: ","V",2,5,0,0,doNothing, noEvent, noStyle) 
-    ,FIELD(Output,"PID Output: ","%",0,100,0,0,doNothing, noEvent, noStyle) 
-    ,FIELD(F3_480,"480nm: ","",0,100000,0,0,doNothing, noEvent, noStyle)
+    ,FIELD(currTemp,"Curr Temp:"," c",0,150,0,0,doNothing, noEvent, noStyle) 
+    ,FIELD(battVOLT,"Batt Voltage:","V",2,5,0,0,doNothing, noEvent, noStyle) 
+    ,FIELD(Output_Percent,"PID Output:","%",0,100,0,0,doNothing, noEvent, noStyle) 
+    ,FIELD(F3_480,"480nm:","",0,100000,0,0,doNothing, noEvent, noStyle)
+
     ,EXIT("<Back")
 );
 
 MENU(setConfig, "SETUP",doNothing,noEvent,wrapStyle                 
     //,FIELD(Setpoint,"Set Temp: ","*C",25,100,1,0, doNothing, noEvent, noStyle)
-    ,FIELD(tempSetting[0],"InitialTemp: "," c",25,100,1,0,doNothing,noEvent,noStyle)         //Init, Denature, Anneal, Extension, and Final temperature 
-    ,FIELD(tempSetting[1],"DenatureTemp: "," c",25,100,1,0,doNothing,noEvent,noStyle)       
-    ,FIELD(tempSetting[2],"AnnealTemp: "," c",25,100,1,0,doNothing,noEvent,noStyle)
-    ,FIELD(tempSetting[3],"ExtensionTemp: "," c",25,100,1,0,doNothing,noEvent,noStyle)
-    ,FIELD(tempSetting[4],"FinalTemp: "," c",25,100,1,0,doNothing,noEvent,noStyle)
-    ,FIELD(cycle,"# of Cycle: ","",0,100,1,0,doNothing,noEvent,noStyle)
+    ,FIELD(tempSetting[0],"InitialTemp:","c",0,100,10,1,doNothing,noEvent,noStyle)         //Init, Denature, Anneal, Extension, and Final temperature 
+    ,FIELD(tempSetting[1],"DenatureTemp:","c",0,100,10,1,doNothing,noEvent,noStyle)       
+    ,FIELD(tempSetting[2],"AnnealTemp:","c",0,100,10,1,doNothing,noEvent,noStyle)
+    ,FIELD(tempSetting[3],"ExtensionTemp:","c",0,100,10,1,doNothing,noEvent,noStyle)
+    ,FIELD(tempSetting[4],"FinalTemp:","c",0,100,10,1,doNothing,noEvent,noStyle)
+
+    ,FIELD(timeSetting[0],"InitialPeriod:","sec",0,180,10,1,doNothing,noEvent,noStyle)         //Init, Denature, Anneal, Extension, and Final temperature 
+    ,FIELD(timeSetting[1],"DenaturePeriod:","sec",0,180,10,1,doNothing,noEvent,noStyle)       
+    ,FIELD(timeSetting[2],"AnnealPeriod:","sec",0,180,10,1,doNothing,noEvent,noStyle)
+    ,FIELD(timeSetting[3],"ExtendPeriod:","sec",0,180,10,1,doNothing,noEvent,noStyle)
+    ,FIELD(timeSetting[4],"FinalPeriod:","sec",0,180,10,1,doNothing,noEvent,noStyle)
+    ,FIELD(setCycle,"# of Cycle:","",0,100,10,1,doNothing,noEvent,noStyle)
+
     ,EXIT("<Back")
 );
 
@@ -103,56 +127,50 @@ MENU(about, "ABOUT",doNothing,noEvent,wrapStyle                                 
 );
 
 MENU(pcrRun, "RUN",doNothing,noEvent,wrapStyle
-    ,SUBMENU(startPCR)                                     
-    ,FIELD(currTemp,"Temperature: ","C",25,150,0,0,doNothing, noEvent, noStyle)           
-    ,FIELD(currCycle,"Cycle: ","",0,100,0,0,doNothing, noEvent, noStyle)
-    ,altOP(altPrompt,"",doNothing,noEvent)
-    //,SUBMENU(exitMenu)
+    ,SUBMENU(startPCR)
+    ,altOP(Stages,"",doNothing,noEvent)
+    ,SUBMENU(Temperature) 
+    ,SUBMENU(Cycle)
+    ,SUBMENU(Cycle_Time)                                    
     ,EXIT("<Back")
 );
 
 MENU(mainMenu,"MAIN",doNothing,noEvent,wrapStyle
-    //,OP("Run", ledToggle, enterEvent)                                                //Works
-    //,FIELD(timeOff,"OffTime: ","ms",1,1000,10,1,doNothing, noEvent, noStyle)         //Works
     ,SUBMENU(pcrRun)
     ,SUBMENU(setConfig)
     ,SUBMENU(about)
     ,SUBMENU(checkSensors)
-    // ,OP("LED On",myLedOn,enterEvent)
-    // ,OP("LED Off",myLedOff,enterEvent)
-    //,EXIT("<Back")
 );
 
 #define MAX_DEPTH 4
 
 MENU_OUTPUTS(out,MAX_DEPTH
-    //,U8G2_OUT(u8g2,colors,fontX,fontY,0,0,{0,0,WIDTH/fontX,HEIGHT/fontY})
     ,ADAGFX_OUT(display,colors,fontX,fontY,{0,0,WIDTH/fontX,HEIGHT/fontY})
-    ,SERIAL_OUT(Serial)
+    //,SERIAL_OUT(Serial)
     ,NONE
 );
 
-serialIn serial(Serial);        //Serial input
+//serialIn serial(Serial);        //Serial input
 MENU_INPUTS(in,&reIn);          //Physical input
 
 NAVROOT(nav,mainMenu,MAX_DEPTH,in,out);
 
 
 result systemExit() {
-    isRunning = false;
-    ledTOGGLE = !ledTOGGLE;
-    digitalWrite(LED_BUILTIN, ledTOGGLE);
+    isRunning = !isRunning;
+    digitalWrite(LED_BUILTIN, isRunning);
+
     return quit;
 }
 /*--------GUI---------*/
 
-void runPID(uint16_t inputTemp )
+void vCallbackFunction(TimerHandle_t pxTimer)
 {
-    Input = inputTemp;
+    currentTime_sec++;
 }
-
 void setup(void)
 {
+    Serial.begin(115200);
     myPID.SetOutputLimits(0,255);
     myPID.SetMode(AUTOMATIC);
 
@@ -167,6 +185,7 @@ void setup(void)
     as7341.enableLED(false);
 
     pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(LED_BLUE, OUTPUT);
 
     ButtonConfig* buttonConfig = button.getButtonConfig();
     buttonConfig->setEventHandler(handleButtonEvent);
@@ -190,22 +209,32 @@ void setup(void)
     p.Begin();
     p.AddTimeGraph( "PID", 800, "PID Output %", w, "Setpoint", x, "Temp", y, "Error", z, "F3_480 RED", F3_480 ); // Add 5 variable time graph
     #endif
-    
+    #ifndef PLOTTER
+    Serial.print("Plotter is disabled");
+    #endif
     F3_480 = 0.0;
+    swTimer.begin(1000,vCallbackFunction, 0,true);
+    swTimer.start();
 }
 
 void loop(void)
 {
-    pcrRun[3].dirty = enabledStatus;
+    Output_Percent = map(Output, 0, 255, 0, 100);
+    runPCR();
+
+    pcrRun[0].dirty = enabledStatus;        //Update all submenu in pcrRun
+    pcrRun[1].dirty = enabledStatus;        //Update all submenu in pcrRun
+    pcrRun[2].dirty = enabledStatus;        //Update all submenu in pcrRun
+    pcrRun[3].dirty = enabledStatus;        //Update all submenu in pcrRun
+    pcrRun[4].dirty = enabledStatus;        //Update all submenu in pcrRun
+
     currTemp = getTemp();                                 
-    unsigned long currentTime = millis();
+    currentTime = millis();
     battVOLT = readBAT(VBATPIN);
-    (currStageCount > 4) ? currStageCount = 0 : NULL;
 
     if ( currentTime - previousTime_1 >= eventTime_1 ){
         // as7341.readAllChannels();
         // F3_480 = as7341.getChannel(AS7341_CHANNEL_480nm_F3);   
-        currStageCount++;
         previousTime_1 = currentTime;
     }
 
@@ -215,13 +244,15 @@ void loop(void)
         previousTime_2 = currentTime;
     }
 
-    Input = getTemp();                  //Input to PID
-    Setpoint = setTemp;                 //Desired output for PID
-
     if( isRunning == true)
     {
-        myPID.Compute();                          //PID Math stuff in here
+        Input = getTemp();                  //Input to PID
+        Setpoint = setTemp;                 //Desired output for PID
+        myPID.Compute();                    //PID Math stuff in here
         analogWrite(HeaterPIN, Output);     //PID Output to heater
+    }else{
+        Input = 0;                          //Input to PID
+        Setpoint = 0;                       //Desired output for PID
     }
 
     #ifdef PLOTTER
@@ -233,7 +264,7 @@ void loop(void)
     #endif
 
     button.check();                     //Read Encoder Button Presses
-    // digitalWrite(LED_BUILTIN, blink(timeOn, timeOff));      //Not required, but shows any hiccups in the MCU if there's inconsistent blinking
+    //digitalWrite(LED_BLUE, blink(timeOn, timeOff));      //Not required, but shows any hiccups in the MCU if there's inconsistent blinking
     
 
     /* Choose one below*/
