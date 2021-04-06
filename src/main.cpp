@@ -1,4 +1,4 @@
-/*------03/15/2021------*/
+/*------04/06/2021------*/
 #include <Adafruit_I2CDevice.h>
 #include <Arduino.h>
 #include <Wire.h>
@@ -236,8 +236,7 @@ void loop(void)
         // as7341.readAllChannels();
         // F3_480 = as7341.getChannel(AS7341_CHANNEL_480nm_F3);   
         previousTime_1 = currentTime;
-    }
-
+    }    
 
     if ( currentTime - previousTime_2 >= eventTime_2) {             //Slows down Encoder reading to prevent double-read
         encoder( RotaryEncoder.read() );
@@ -269,12 +268,12 @@ void loop(void)
 
     /* Choose one below*/
 
-    nav.poll();              //Polling based, laggy inputs but better for time sensitive application
-    display.display(); 
+    // nav.poll();              //Polling based, laggy inputs but better for time sensitive application
+    // display.display(); 
 
-    // nav.doInput();              //Event Based. This display method is more responsive, but lags background process
-    // if (nav.changed(0)) {       //only draw if changed
-    //     nav.doOutput();
-    //     display.display();
-    // }
+    nav.doInput();              //Event Based. This display method is more responsive, but lags background process
+    if (nav.changed(0)) {       //only draw if changed
+        nav.doOutput();
+        display.display();
+    }
 }
