@@ -73,6 +73,10 @@ altMENU(confirmRun,startPCR,"Confirm Action?",doNothing,noEvent,noStyle,(Menu::_
     ,EXIT("Cancel")
 );
 
+// PADMENU(detectionSensor,"",doNothing,noEvent,noStyle
+//     ,FIELD(F3_480,"480nm:","c/",0,150,0,0,doNothing, noEvent, noStyle)           
+// );
+
 PADMENU(Temperature,"",doNothing,noEvent,noStyle
     ,FIELD(currTemp,"Temp:","c/",0,150,0,0,doNothing, noEvent, noStyle)           
     ,FIELD(setTemp,"","c/",0,150,0,0,doNothing, noEvent, noStyle)
@@ -93,7 +97,8 @@ MENU(checkSensors, "SENSORS READ",doNothing,noEvent,wrapStyle                  /
     ,FIELD(currTemp,"Curr Temp:"," c",0,150,0,0,doNothing, noEvent, noStyle) 
     ,FIELD(battVOLT,"Batt Voltage:","V",2,5,0,0,doNothing, noEvent, noStyle) 
     ,FIELD(Output_Percent,"PID Output:","%",0,100,0,0,doNothing, noEvent, noStyle) 
-    ,FIELD(F3_480,"480nm:","",0,100000,0,0,doNothing, noEvent, noStyle)
+    //,FIELD(F3_480,"480nm:","",0,100000,0,0,doNothing, noEvent, noStyle)
+    ,FIELD(F4_515,"515nm:","",0,100000,0,0,doNothing, noEvent, noStyle)
 
     ,EXIT("<Back")
 );
@@ -131,7 +136,8 @@ MENU(pcrRun, "RUN",doNothing,noEvent,wrapStyle
     ,altOP(Stages,"",doNothing,noEvent)
     ,SUBMENU(Temperature) 
     ,SUBMENU(Cycle)
-    ,SUBMENU(Cycle_Time)                                    
+    ,SUBMENU(Cycle_Time)
+    //,SUBMENU(detectionSensor)                                    
     ,EXIT("<Back")
 );
 
@@ -180,7 +186,7 @@ void setup(void)
     as7341.begin();
     as7341.setATIME(100);
     as7341.setASTEP(999);
-    as7341.setGain(AS7341_GAIN_256X);
+    as7341.setGain(AS7341_GAIN_128X);
     as7341.startReading();
     as7341.enableLED(false);
 
@@ -233,8 +239,9 @@ void loop(void)
     battVOLT = readBAT(VBATPIN);
 
     if ( currentTime - previousTime_1 >= eventTime_1 ){
-        // as7341.readAllChannels();
-        // F3_480 = as7341.getChannel(AS7341_CHANNEL_480nm_F3);   
+        as7341.readAllChannels();
+        //F3_480 = as7341.getChannel(AS7341_CHANNEL_480nm_F3);
+        F4_515 = as7341.getChannel(AS7341_CHANNEL_515nm_F4);   
         previousTime_1 = currentTime;
     }    
 
