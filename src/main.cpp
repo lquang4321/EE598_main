@@ -1,4 +1,4 @@
-/*------04/06/2021------*/
+/*------04/26/2021------*/
 #include <Adafruit_I2CDevice.h>
 #include <Arduino.h>
 #include <Wire.h>
@@ -60,7 +60,7 @@ class confirmRun:public menu {
         Used printTo(navRoot &root,bool sel,menuOut& out, idx_t idx,idx_t len,idx_t p) override {
             //digitalWrite(LED_BUILTIN, HIGH);
             //isRunning = true;
-            return idx<0? 
+            return idx<0?
             menu::printTo(root,sel,out,idx,len,p)://when printing title
             out.printRaw(String(runStatus[isRunning]).c_str(),len);//when printing as regular option
         }
@@ -74,45 +74,50 @@ altMENU(confirmRun,startPCR,"Confirm Action?",doNothing,noEvent,noStyle,(Menu::_
 );
 
 // PADMENU(detectionSensor,"",doNothing,noEvent,noStyle
-//     ,FIELD(F3_480,"480nm:","c/",0,150,0,0,doNothing, noEvent, noStyle)           
+//     ,FIELD(F3_480,"480nm:","c/",0,150,0,0,doNothing, noEvent, noStyle)
 // );
 
 PADMENU(Temperature,"",doNothing,noEvent,noStyle
-    ,FIELD(currTemp,"Temp:","c/",0,150,0,0,doNothing, noEvent, noStyle)           
+    ,FIELD(currTemp,"Temp:","c/",0,150,0,0,doNothing, noEvent, noStyle)
     ,FIELD(setTemp,"","c/",0,150,0,0,doNothing, noEvent, noStyle)
     ,FIELD(Output_Percent,"","%",0,100,0,0,doNothing, noEvent, noStyle)
 );
 
+PADMENU(Detect,"",doNothing,noEvent,noStyle
+    ,FIELD(F4_515,"515nm:","/",0,100000,0,0,doNothing, noEvent, noStyle)
+    ,FIELD(detectAVG,"AVG:","",0,100000,0,0,doNothing, noEvent, noStyle)
+);
+
 PADMENU(Cycle,"",doNothing,noEvent,wrapStyle
-    ,FIELD(currCycle,"Cycle:"," /",0,150,0,0,doNothing, noEvent, noStyle)           
+    ,FIELD(currCycle,"Cycle:"," /",0,150,0,0,doNothing, noEvent, noStyle)
     ,FIELD(setCycle,"","",0,150,0,0,doNothing, noEvent, noStyle)
 );
 
 PADMENU(Cycle_Time,"",doNothing,noEvent,wrapStyle
-    ,FIELD( currentTime_sec ,"Time:","s /",0,1000,0,0,doNothing, noEvent, noStyle)           
+    ,FIELD( currentTime_sec ,"Time:","s /",0,1000,0,0,doNothing, noEvent, noStyle)
     ,FIELD(cycleTime,"","s",0,150,0,0,doNothing, noEvent, noStyle)
 );
 
 MENU(checkSensors, "SENSORS READ",doNothing,noEvent,wrapStyle                  //Working
-    ,FIELD(currTemp,"Curr Temp:"," c",0,150,0,0,doNothing, noEvent, noStyle) 
-    ,FIELD(battVOLT,"Batt Voltage:","V",2,5,0,0,doNothing, noEvent, noStyle) 
-    ,FIELD(Output_Percent,"PID Output:","%",0,100,0,0,doNothing, noEvent, noStyle) 
+    ,FIELD(currTemp,"Curr Temp:"," c",0,150,0,0,doNothing, noEvent, noStyle)
+    ,FIELD(battVOLT,"Batt Voltage:","V",2,5,0,0,doNothing, noEvent, noStyle)
+    ,FIELD(Output_Percent,"PID Output:","%",0,100,0,0,doNothing, noEvent, noStyle)
     //,FIELD(F3_480,"480nm:","",0,100000,0,0,doNothing, noEvent, noStyle)
     ,FIELD(F4_515,"515nm:","",0,100000,0,0,doNothing, noEvent, noStyle)
 
     ,EXIT("<Back")
 );
 
-MENU(setConfig, "SETUP",doNothing,noEvent,wrapStyle                 
+MENU(setConfig, "SETUP",doNothing,noEvent,wrapStyle
     //,FIELD(Setpoint,"Set Temp: ","*C",25,100,1,0, doNothing, noEvent, noStyle)
-    ,FIELD(tempSetting[0],"InitialTemp:","c",0,100,10,1,doNothing,noEvent,noStyle)         //Init, Denature, Anneal, Extension, and Final temperature 
-    ,FIELD(tempSetting[1],"DenatureTemp:","c",0,100,10,1,doNothing,noEvent,noStyle)       
+    ,FIELD(tempSetting[0],"InitialTemp:","c",0,100,10,1,doNothing,noEvent,noStyle)         //Init, Denature, Anneal, Extension, and Final temperature
+    ,FIELD(tempSetting[1],"DenatureTemp:","c",0,100,10,1,doNothing,noEvent,noStyle)
     ,FIELD(tempSetting[2],"AnnealTemp:","c",0,100,10,1,doNothing,noEvent,noStyle)
     ,FIELD(tempSetting[3],"ExtensionTemp:","c",0,100,10,1,doNothing,noEvent,noStyle)
     ,FIELD(tempSetting[4],"FinalTemp:","c",0,100,10,1,doNothing,noEvent,noStyle)
 
-    ,FIELD(timeSetting[0],"InitialPeriod:","sec",0,180,10,1,doNothing,noEvent,noStyle)         //Init, Denature, Anneal, Extension, and Final temperature 
-    ,FIELD(timeSetting[1],"DenaturePeriod:","sec",0,180,10,1,doNothing,noEvent,noStyle)       
+    ,FIELD(timeSetting[0],"InitialPeriod:","sec",0,180,10,1,doNothing,noEvent,noStyle)         //Init, Denature, Anneal, Extension, and Final temperature
+    ,FIELD(timeSetting[1],"DenaturePeriod:","sec",0,180,10,1,doNothing,noEvent,noStyle)
     ,FIELD(timeSetting[2],"AnnealPeriod:","sec",0,180,10,1,doNothing,noEvent,noStyle)
     ,FIELD(timeSetting[3],"ExtendPeriod:","sec",0,180,10,1,doNothing,noEvent,noStyle)
     ,FIELD(timeSetting[4],"FinalPeriod:","sec",0,180,10,1,doNothing,noEvent,noStyle)
@@ -121,23 +126,25 @@ MENU(setConfig, "SETUP",doNothing,noEvent,wrapStyle
     ,EXIT("<Back")
 );
 
-MENU(about, "ABOUT",doNothing,noEvent,wrapStyle                                          //Works
-    ,OP("CCNYSenior II Spr'21", doNothing, noEvent)                                    //Works
-    ,OP("      AUTHOR        ", doNothing, noEvent)                                      //Works  
-    ,OP("Quang T, Yossel N,", doNothing, noEvent)                                       //Works
-    ,OP("Gnimdou T, Yousra T", doNothing, noEvent)                                      //Works    
-    ,OP("      MENTOR        ", doNothing, noEvent)                                     //Works 
-    ,OP("Prof. Sang-woo Seo", doNothing, noEvent)                                        //Works
+MENU(about, "ABOUT",doNothing,noEvent,wrapStyle                                          //
+    ,OP("CCNYSenior II Spr'21", doNothing, noEvent)                                    //
+    ,OP("      AUTHOR        ", doNothing, noEvent)                                      //
+    ,OP("Quang T, Yossel N,", doNothing, noEvent)                                       //
+    ,OP("Gnimdou T, Yousra T", doNothing, noEvent)                                      //
+    ,OP("      MENTOR        ", doNothing, noEvent)                                     //
+    ,OP("Prof. Sang-woo Seo", doNothing, noEvent)                                        //
     ,EXIT("<Back")
 );
 
 MENU(pcrRun, "RUN",doNothing,noEvent,wrapStyle
-    ,SUBMENU(startPCR)
-    ,altOP(Stages,"",doNothing,noEvent)
-    ,SUBMENU(Temperature) 
+    ,SUBMENU(startPCR)                                                          //    pcrRun[0].dirty
+    ,altOP(Stages,"",doNothing,noEvent)                                         //    pcrRun[1].dirty
+    ,SUBMENU(Temperature)
     ,SUBMENU(Cycle)
     ,SUBMENU(Cycle_Time)
-    //,SUBMENU(detectionSensor)                                    
+    ,FIELD(F4_515,"515nm:","",0,100000,0,0,doNothing, noEvent, noStyle)
+    ,FIELD(detectAVG,"515nm AVG:","",0,100000,0,0,doNothing, noEvent, noStyle)
+    //,SUBMENU(Detect)
     ,EXIT("<Back")
 );
 
@@ -201,7 +208,7 @@ void setup(void)
     buttonConfig->setFeature(ButtonConfig::kFeatureSuppressClickBeforeDoubleClick);
     buttonConfig->setFeature(ButtonConfig::kFeatureSuppressAfterClick);
     buttonConfig->setFeature(ButtonConfig::kFeatureSuppressAfterDoubleClick);
-    
+
     RotaryInit();
 
     display.begin(SSD1306_EXTERNALVCC, 0x3c);
@@ -213,12 +220,12 @@ void setup(void)
     //Start plotter
     #ifdef PLOTTER
     p.Begin();
-    p.AddTimeGraph( "PID", 800, "PID Output %", w, "Setpoint", x, "Temp", y, "Error", z, "F3_480 RED", F3_480 ); // Add 5 variable time graph
+    p.AddTimeGraph( "PID", 800, "PID Output %", w, "Setpoint", x, "Temp", y, "Error", z, "F4_515 GREEN", F4_515 ); // Add 5 variable time graph
     #endif
     #ifndef PLOTTER
     Serial.print("Plotter is disabled");
     #endif
-    F3_480 = 0.0;
+    F4_515 = 0.0;
     swTimer.begin(1000,vCallbackFunction, 0,true);
     swTimer.start();
 }
@@ -228,22 +235,18 @@ void loop(void)
     Output_Percent = map(Output, 0, 255, 0, 100);
     runPCR();
 
-    pcrRun[0].dirty = enabledStatus;        //Update all submenu in pcrRun
-    pcrRun[1].dirty = enabledStatus;        //Update all submenu in pcrRun
-    pcrRun[2].dirty = enabledStatus;        //Update all submenu in pcrRun
-    pcrRun[3].dirty = enabledStatus;        //Update all submenu in pcrRun
-    pcrRun[4].dirty = enabledStatus;        //Update all submenu in pcrRun
+    pcrRun[0].dirty = enabledStatus;        //Update all submenu in "pcrRun"
+    pcrRun[1].dirty = enabledStatus;        //Update all submenu in "pcrRun"
+    pcrRun[2].dirty = enabledStatus;        //Update all submenu in "pcrRun"
+    pcrRun[3].dirty = enabledStatus;        //Update all submenu in "pcrRun"
+    pcrRun[4].dirty = enabledStatus;        //Update all submenu in "pcrRun"
+    pcrRun[5].dirty = enabledStatus;        //Update all submenu in "pcrRun"
+    pcrRun[6].dirty = enabledStatus;        //Update all submenu in "pcrRun"
 
-    currTemp = getTemp();                                 
+    currTemp = getTemp();
     currentTime = millis();
     battVOLT = readBAT(VBATPIN);
 
-    if ( currentTime - previousTime_1 >= eventTime_1 ){
-        as7341.readAllChannels();
-        //F3_480 = as7341.getChannel(AS7341_CHANNEL_480nm_F3);
-        F4_515 = as7341.getChannel(AS7341_CHANNEL_515nm_F4);   
-        previousTime_1 = currentTime;
-    }    
 
     if ( currentTime - previousTime_2 >= eventTime_2) {             //Slows down Encoder reading to prevent double-read
         encoder( RotaryEncoder.read() );
@@ -263,7 +266,7 @@ void loop(void)
 
     #ifdef PLOTTER
     w = map(Output, 0, 255, 0, 100);    //Plotter Stuff to see on the computer
-    x = Setpoint;   
+    x = Setpoint;
     y = getTemp();
     z = Setpoint - Input;
     p.Plot();                           // usually called within loop()
@@ -271,12 +274,12 @@ void loop(void)
 
     button.check();                     //Read Encoder Button Presses
     //digitalWrite(LED_BLUE, blink(timeOn, timeOff));      //Not required, but shows any hiccups in the MCU if there's inconsistent blinking
-    
+
 
     /* Choose one below*/
 
     // nav.poll();              //Polling based, laggy inputs but better for time sensitive application
-    // display.display(); 
+    // display.display();
 
     nav.doInput();              //Event Based. This display method is more responsive, but lags background process
     if (nav.changed(0)) {       //only draw if changed
