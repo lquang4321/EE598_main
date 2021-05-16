@@ -1,5 +1,4 @@
 .vscode
-/include
 /test
 /lib
 .pio/libdeps/Adafruit Feather bluefruit LE
