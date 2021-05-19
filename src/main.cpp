@@ -1,11 +1,10 @@
 /*------05/05/2021------*/
-#include <Adafruit_I2CDevice.h>
-#include <Arduino.h>
-#include <Wire.h>
-#include <RotaryEncoder.h>
-#include <InternalFileSystem.h>
-#include <PID_v1.h>
-#include <utility/SoftwareTimer.h>      //For keeping cycle time
+#include <Adafruit_I2CDevice.h>         // I2C library
+#include <Arduino.h>                    // Arduino related functions
+#include <Wire.h>                       // I2C library
+#include <RotaryEncoder.h>              // Encoder library
+#include <PID_v1.h>                     // PID library for heater
+#include <utility/SoftwareTimer.h>      // Timer library for PCR Cycling
 
 #include <menu.h>                       //GUI related stuff
 #include <menuIO/serialOut.h>
@@ -13,28 +12,15 @@
 #include <menuIO/chainStream.h>
 #include <menuIO/rotaryEventIn.h>
 #include <menuIO/adafruitGfxOut.h>
-#include <AceButton.h>                  //Push Button features
+#include <AceButton.h>                  //Push Button for encoder & GUI
 
 #include <Adafruit_AS7341.h>            //Light sensor
-#include <Adafruit_SSD1306.h>           //OLED
-#include <Plotter.h>                    //Serial plotter on PC
+#include <Adafruit_SSD1306.h>           //OLED library
+#include <Plotter.h>                    //Serial plotter on PC for debugging
 
-#include <config.h>                     //This project settings and functions
+#include <config.h>                     //Project settings and functions header file
 
 using namespace Menu;
-
-/*--------COLOR SENSOR---------*/
-/*--------ENCODER---------*/
-/*--------THERMISTOR---------*/
-/*--------READ BAT VOLTAGE---------*/
-/*--------PID---------*/
-/*--------DISPLAY---------*/
-/*--------Plotter---------*/
-/*--------Millis Delay------*/
-/*--------PCR LOGIC---------*/
-/*--------PID---------*/
-/*--------Temp Reading---------*/
-/*--------Batt Reading---------*/
 
 void RotaryInit(void)
 {
@@ -108,37 +94,47 @@ MENU(checkSensors, "SENSORS READ",doNothing,noEvent,wrapStyle                  /
     ,EXIT("<Back")
 );
 
+/*----Configuration Menu Page----*/
 MENU(setConfig, "SETUP",doNothing,noEvent,wrapStyle
-    //,FIELD(Setpoint,"Set Temp: ","*C",25,100,1,0, doNothing, noEvent, noStyle)
-    ,FIELD(tempSetting[0],"InitialTemp:","c",0,100,10,1,doNothing,noEvent,noStyle)         //Init, Denature, Anneal, Extension, and Final temperature
+    //Init, Denature, Anneal, Extension, and Final temperature
+    ,FIELD(tempSetting[0],"InitialTemp:","c",0,100,10,1,doNothing,noEvent,noStyle)
     ,FIELD(tempSetting[1],"DenatureTemp:","c",0,100,10,1,doNothing,noEvent,noStyle)
     ,FIELD(tempSetting[2],"AnnealTemp:","c",0,100,10,1,doNothing,noEvent,noStyle)
     ,FIELD(tempSetting[3],"ExtensionTemp:","c",0,100,10,1,doNothing,noEvent,noStyle)
     ,FIELD(tempSetting[4],"FinalTemp:","c",0,100,10,1,doNothing,noEvent,noStyle)
 
-    ,FIELD(timeSetting[0],"InitialPeriod:","sec",0,180,10,1,doNothing,noEvent,noStyle)         //Init, Denature, Anneal, Extension, and Final temperature
-    ,FIELD(timeSetting[1],"DenaturePeriod:","sec",0,180,10,1,doNothing,noEvent,noStyle)
-    ,FIELD(timeSetting[2],"AnnealPeriod:","sec",0,180,10,1,doNothing,noEvent,noStyle)
-    ,FIELD(timeSetting[3],"ExtendPeriod:","sec",0,180,10,1,doNothing,noEvent,noStyle)
-    ,FIELD(timeSetting[4],"FinalPeriod:","sec",0,180,10,1,doNothing,noEvent,noStyle)
-    ,FIELD(setCycle,"# of Cycle:","",0,100,10,1,doNothing,noEvent,noStyle)
-
+    //Init, Denature, Anneal, Extension, and Final period
+    ,FIELD(timeSetting[0],"InitialPeriod:","sec",
+        0,180,10,1,doNothing,noEvent,noStyle)        
+    ,FIELD(timeSetting[1],"DenaturePeriod:","sec",
+        0,180,10,1,doNothing,noEvent,noStyle)
+    ,FIELD(timeSetting[2],"AnnealPeriod:","sec",
+        0,180,10,1,doNothing,noEvent,noStyle)
+    ,FIELD(timeSetting[3],"ExtendPeriod:","sec",
+        0,180,10,1,doNothing,noEvent,noStyle)
+    ,FIELD(timeSetting[4],"FinalPeriod:","sec",
+        0,180,10,1,doNothing,noEvent,noStyle)
+    ,FIELD(setCycle,"# of Cycle:","",
+        0,100,10,1,doNothing,noEvent,noStyle)
     ,EXIT("<Back")
 );
 
-MENU(about, "ABOUT",doNothing,noEvent,wrapStyle                                          //
-    ,OP("CCNYSenior II Spr'21", doNothing, noEvent)                                    //
-    ,OP("      AUTHOR        ", doNothing, noEvent)                                      //
-    ,OP("Quang T, Yossel N,", doNothing, noEvent)                                       //
-    ,OP("Gnimdou T, Yousra T", doNothing, noEvent)                                      //
-    ,OP("      MENTOR        ", doNothing, noEvent)                                     //
-    ,OP("Prof. Sang-woo Seo", doNothing, noEvent)                                        //
+/*----About Menu Page----*/
+MENU(about, "ABOUT",doNothing,noEvent,wrapStyle
+    ,OP("CCNYSenior II Spr'21", doNothing, noEvent)
+    ,OP("      AUTHOR        ", doNothing, noEvent)
+    ,OP("Quang T, Yossel N,", doNothing, noEvent)
+    ,OP("Gnimdou T, Yousra T", doNothing, noEvent)
+    ,OP("      MENTOR        ", doNothing, noEvent)
+    ,OP("Prof. Sang-woo Seo", doNothing, noEvent)
     ,EXIT("<Back")
 );
 
+/*----Run Menu Page----*/
+//Progress page that runs/cancel PCR, PCR status, and detection
 MENU(pcrRun, "RUN",doNothing,noEvent,wrapStyle
-    ,SUBMENU(startPCR)                                                          //    pcrRun[0].dirty
-    ,altOP(Stages,"",doNothing,noEvent)                                         //    pcrRun[1].dirty
+    ,SUBMENU(startPCR) 
+    ,altOP(Stages,"",doNothing,noEvent) 
     ,SUBMENU(Temperature)
     ,SUBMENU(Cycle)
     ,SUBMENU(Cycle_Time)
@@ -183,7 +179,7 @@ void vCallbackFunction(TimerHandle_t pxTimer)
 }
 void setup(void)
 {
-    Serial.begin(115200);
+    Serial.begin(115200);                   
     myPID.SetOutputLimits(0,255);
     myPID.SetMode(AUTOMATIC);
 
@@ -216,8 +212,6 @@ void setup(void)
     delay(100);
     display.display();
 
-    //Serial.begin(115200);
-    //Start plotter
     #ifdef PLOTTER
     p.Begin();
     p.AddTimeGraph( "PID", 800, "PID Output %", w, "Setpoint", x, "Temp", y, "Error", z, "F4_515 GREEN", F4_515 ); // Add 5 variable time graph
@@ -225,6 +219,7 @@ void setup(void)
     #ifndef PLOTTER
     Serial.print("Plotter is disabled");
     #endif
+
     F4_515 = 0.0;
     swTimer.begin(1000,vCallbackFunction, 0,true);
     swTimer.start();
@@ -235,6 +230,8 @@ void loop(void)
     Output_Percent = map(Output, 0, 255, 0, 100);
     runPCR();
 
+    //Required for real-time update otherwise
+    //GUI only updates when there's user inputs
     pcrRun[0].dirty = enabledStatus;        //Update all submenu in "pcrRun"
     pcrRun[1].dirty = enabledStatus;        //Update all submenu in "pcrRun"
     pcrRun[2].dirty = enabledStatus;        //Update all submenu in "pcrRun"
@@ -273,13 +270,6 @@ void loop(void)
     #endif
 
     button.check();                     //Read Encoder Button Presses
-    //digitalWrite(LED_BLUE, blink(timeOn, timeOff));      //Not required, but shows any hiccups in the MCU if there's inconsistent blinking
-
-
-    /* Choose one below*/
-
-    // nav.poll();              //Polling based, laggy inputs but better for time sensitive application
-    // display.display();
 
     nav.doInput();              //Event Based. This display method is more responsive, but lags background process
     if (nav.changed(0)) {       //only draw if changed

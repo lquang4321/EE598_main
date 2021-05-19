@@ -42,7 +42,8 @@ RotaryEventIn reIn(
   RotaryEventIn::EventType::ROTARY_CW // down
 );
 
-void encoder( int8_t step)                                                                      //Encoder rotation 
+//Encoder rotation 
+void encoder( int8_t step)                                                                     
 {
     if( step)
     {
@@ -56,7 +57,8 @@ void encoder( int8_t step)                                                      
     }
 }
 
-void handleButtonEvent(AceButton* /* button */, uint8_t eventType, uint8_t buttonState) {       //Handles button (click, double click, click&hold)
+//Handles button (click, double click, click&hold)
+void handleButtonEvent(AceButton* /* button */, uint8_t eventType, uint8_t buttonState) {      
 
   switch (eventType) {
     case AceButton::kEventClicked:
@@ -116,14 +118,11 @@ float readBAT(int pin){
 
 #define HeaterPIN 16
 
-unsigned long lastTime;
 uint8_t Output_Percent = 0;
 double Input, Output, Setpoint;
 double ITerm, lastInput;
 double kp = 9, ki = 0.8, kd = 6;
 int SampleTime = 100; //1 sec
-double outMin, outMax;
-bool inAuto = false;
 
 PID myPID(&Input, &Output, &Setpoint, kp, ki, kd, DIRECT);
 // void Compute()
@@ -284,7 +283,6 @@ float getTemp(void){
 /*--------Temp Reading---------*/
 
 /*--------PCR LOGIC---------*/
-bool        isSet = false;              //Checks for config before allowing to run
 bool        isRunning = false;
 
 #define INITIAL 0
