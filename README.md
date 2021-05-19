@@ -16,3 +16,5 @@ This was written using *Visual Studio Code (VSC)* and the plugin *PlatformIO (PI
     ![Feather nRF52 Pinout v1.2](https://cdn-learn.adafruit.com/assets/assets/000/046/248/original/microcontrollers_Feather_NRF52_Pinout_v1.2-1.png?1504885794)
  2) The schematic for the PCR Project:
     ![Compact PCR Schematic](https://github.com/lquang4321/EE598_main/blob/master/schematic/Schematic.png)
+ 3) Final Report
+    [To-be-added]().
