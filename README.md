@@ -12,7 +12,7 @@ This was written using *Visual Studio Code (VSC)* and the plugin *PlatformIO (PI
 
 
 # Project files
-1) Adafruit Feather nRF52 Microcontroller
+##1) Adafruit Feather nRF52 Microcontroller
     ![Feather nRF52 Pinout v1.2](https://cdn-learn.adafruit.com/assets/assets/000/046/248/original/microcontrollers_Feather_NRF52_Pinout_v1.2-1.png?1504885794)
-2) The schematic for the PCR Project:
+##2) The schematic for the PCR Project:
     ![Compact PCR Schematic](https://github.com/lquang4321/EE598_main/blob/master/schematic/Schematic.png)
