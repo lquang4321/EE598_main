@@ -11,10 +11,8 @@ This was written using *Visual Studio Code (VSC)* and the plugin *PlatformIO (PI
 ***"Plotter"*** is not required for the functionality, it's meant to display serial data on Processing. If you wish to install, the instructions are [here](https://github.com/devinaconley/arduino-plotter).
 
 
-### !!!⚠️CAUTION⚠️!!!! READ FIRST
-1) This project requires some knowledge in electronic. **DO NOT** attach the heating element directly to a pin. Please use a MOSFET to PWM high power component.
-2) **DO NOT** attach heating element before making sure temperature sensor work, otherwise there is a risk of **uncontrollable** heating. As of now, heating element operates automatically based on temperature sensor. Disconnected temperature sensor will read -273*C.
-3) Make sure all operation **DO NOT** exceed any limits per image below:
+# Project files
+1) Adafruit Feather nRF52 Microcontroller
     ![Feather nRF52 Pinout v1.2](https://cdn-learn.adafruit.com/assets/assets/000/046/248/original/microcontrollers_Feather_NRF52_Pinout_v1.2-1.png?1504885794)
-4) The schematic for the PCR Project:
+2) The schematic for the PCR Project:
     ![Compact PCR Schematic](https://github.com/lquang4321/EE598_main/blob/master/schematic/Schematic.png)
