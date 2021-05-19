@@ -1,6 +1,6 @@
 # Compact PCR
 ## Spring 2021, Senior Design II @ CCNY
-**Instructor:** Prof. Sang-woo Seo
+**Instructor:** Prof. Sang-Woo Seo
 
 **Member**: Quang Truong, Yossel Newman, Yousra Tabrani, Gnimdou Tchalim
 
